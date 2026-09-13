@@ -1,0 +1,271 @@
+code: VPN-001
+tier: runbook
+title: "VPN bağlanmıyor veya bağlantı kopuyor"
+summary: "Uzaktan bağlantı kurulmuyor, kuruluyor ama düşüyor ya da bağlıyken iç kaynaklara erişilemiyor."
+category: ag/vpn
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows, macos]
+  asset: [laptop]
+
+tags: [vpn, uzaktan-calisma, tunel, split-tunnel]
+
+aliases:
+  - { term: "vpn bağlanmıyor",            kind: belirti, weight: 1.0 }
+  - { term: "vpn kopuyor",                kind: belirti, weight: 1.0 }
+  - { term: "uzaktan bağlanamıyorum",     kind: belirti, weight: 1.0 }
+  - { term: "vpn hata veriyor",           kind: belirti, weight: 1.0 }
+  - { term: "vpn bağlı ama erişemiyorum", kind: belirti, weight: 1.0 }
+  - { term: "evden sisteme giremiyorum",  kind: belirti, weight: 0.9 }
+  - { term: "vpn sürekli düşüyor",        kind: belirti, weight: 1.0 }
+  - { term: "vpn will not connect",       kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "VPN hangi aşamada takılıyor?"
+    body_md: |
+      Dört aşama, dört ayrı arıza. Kullanıcıya istemciyi açtır ve **hangi
+      noktada durduğunu** anlattır.
+    est_seconds: 60
+    edges:
+      - { label: "Hiç bağlanmıyor, hata veriyor",           to: N20 }
+      - { label: "Kimlik doğrulama reddediliyor",           to: N30 }
+      - { label: "Bağlanıyor ama kısa sürede kopuyor",      to: N40 }
+      - { label: "Bağlı görünüyor, iç kaynaklara erişemiyorum", to: N50 }
+
+  # ── Hiç bağlanmıyor ───────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Önce alttaki internet bağlantısını doğrula"
+    body_md: |
+      VPN, üzerinde çalıştığı bağlantı kadar sağlamdır. Bu adımı atlayıp
+      istemciyle uğraşmak en sık yapılan zaman kaybıdır.
+
+      Kullanıcıdan tarayıcıda herhangi bir **dış siteyi** açmasını iste.
+      Evden bağlanıyorsa modemin durumunu da sordur.
+    verify_text: "Tarayıcıdan bir dış site açılıyor mu?"
+    est_seconds: 120
+    edges:
+      - { label: "Evet, internet çalışıyor",                to: N22 }
+      - { label: "Hayır, internet de yok",                  to: N93 }
+
+  - key: N22
+    type: talimat
+    title: "İstemciyi ve bağlantı profilini yenile"
+    body_md: |
+      1. VPN istemcisini **tamamen kapat** — sistem tepsisinden de çık —
+         ve yeniden aç.
+      2. Sunucu adresinin/profilin doğru olduğunu doğrula. Adres kurum
+         dokümanındakiyle birebir aynı olmalı.
+      3. İstemci sürümünü kontrol et; eski sürümler sunucu tarafı
+         güncellendiğinde sessizce bağlanamaz olur.
+      4. Cihazı yeniden başlatıp tekrar dene.
+    verify_text: "Bağlantı kuruldu mu, kurulmadıysa ekranda hangi hata var?"
+    est_seconds: 600
+    edges:
+      - { label: "Bağlandı",                                to: N23 }
+      - { label: "Sertifika ile ilgili bir hata veriyor",   to: N24 }
+      - { label: "Başka bir hata kodu veriyor",             to: N92 }
+
+  - key: N23
+    type: cozum
+    title: "Çözüldü — istemci veya profil yenilendi"
+    root_cause: VPN_ISTEMCI_PROFIL
+    closure_note: "İstemci takılı kalmıştı ya da profil/sürüm eskiydi."
+    followup_md: |
+      İstemci sürümü eskiyse aynı sorun diğer uzaktan çalışanlarda da
+      çıkacaktır. Sürüm dağıtımını kontrol ettir.
+
+  - key: N24
+    type: talimat
+    title: "Cihaz sertifikasını yenile"
+    body_md: |
+      1. `certlm.msc` (kullanıcı sertifikası ise `certmgr.msc`) → sertifikanın
+         **geçerlilik bitiş tarihine** bak.
+      2. Süresi dolmuşsa kurumun yenileme prosedürünü uygula.
+      3. Yenileme etki alanı bağlantısı gerektiriyorsa cihazın ofis ağına ya da
+         kablolu bağlantıya alınması gerekebilir — kullanıcıya bunu baştan söyle.
+    verify_text: "Sertifika geçerli hale geldi ve VPN bağlandı mı?"
+    risk: orta
+    requires_admin: true
+    est_seconds: 900
+    edges:
+      - { label: "Sertifika yenilendi, bağlandı",           to: N25 }
+      - { label: "Yenilenemedi",                            to: N92 }
+
+  - key: N25
+    type: cozum
+    title: "Çözüldü — cihaz sertifikasının süresi dolmuştu"
+    root_cause: VPN_SERTIFIKA
+    closure_note: "VPN kimlik sertifikası süresi dolmuştu, yenilendi."
+    followup_md: |
+      Sertifikalar toplu süresi dolar. Aynı tarihte çıkan başka çağrı var mı
+      kontrol et; varsa bu tek tek çözülecek bir vaka değil, toplu yenileme işidir.
+
+  # ── Kimlik reddediliyor ───────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Kimlik ve çok faktörlü doğrulama tarafını kontrol et"
+    body_md: |
+      1. Kullanıcı adı biçimini doğrula — VPN genelde e-posta biçimini ister,
+         oturum açma adını değil.
+      2. Kullanıcı parolasını **yakın zamanda değiştirdi mi**? Laptop uzaktaysa
+         yeni parola cihaza henüz işlenmemiş olabilir.
+      3. MFA isteniyorsa: bildirim telefona ulaşıyor mu, saat cihazda doğru mu?
+         Authenticator uygulamaları saat kaymasında kod üretmeyi bırakır.
+    verify_text: "Kimlik doğrulaması geçti ve bağlantı kuruldu mu?"
+    est_seconds: 600
+    edges:
+      - { label: "Giriş yapıldı, bağlandı",                 to: N31 }
+      - { label: "Hesap kilitli veya parola reddediliyor",  to: N94 }
+      - { label: "MFA bildirimi/kodu hiç gelmiyor",         to: N92 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — kimlik bilgisi biçimi veya MFA"
+    root_cause: VPN_KIMLIK
+    closure_note: "Kullanıcı adı biçimi yanlıştı ya da MFA tarafı düzeltildi."
+
+  # ── Kopuyor ───────────────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Kopmanın desenini bul"
+    body_md: |
+      Ne zaman koptuğu, neden koptuğunu söyler. Kullanıcıya sor: dakikada bir mi,
+      hareket edince mi, bir şey indirirken mi?
+
+      1. **Boşta kalma zaman aşımı**: kullanıcı hiçbir şey yapmazken kopuyorsa
+         bu bir arıza değil, ilkedir. Kullanıcıya açıkla.
+      2. **Ağ değişimi**: cihaz Wi-Fi ile kablolu arasında geçiş yapıyorsa
+         tünel kopar. Kullanılmayan adaptörü devre dışı bırakıp dene.
+      3. **Uyku**: kapağı kapanınca kopuyorsa güç planındaki kablosuz güç
+         tasarrufunu kapat.
+      4. **Zayıf kablosuz**: kopmalar yalnız Wi-Fi'deyse önce oraya bak.
+    verify_text: "Aynı koşullarda bağlantı ayakta kalıyor mu?"
+    est_seconds: 900
+    edges:
+      - { label: "Kopmalar durdu",                          to: N41 }
+      - { label: "Yalnız Wi-Fi'deyken kopuyor",             to: N95 }
+      - { label: "Kopmalar devam ediyor",                   to: N92 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — ağ değişimi, uyku veya zaman aşımı"
+    root_cause: VPN_KOPMA
+    closure_note: "Tünel, altındaki bağlantı değiştiği veya cihaz uyuduğu için kopuyordu."
+
+  # ── Bağlı ama erişim yok ──────────────────────────────────────────
+  - key: N50
+    type: olcum
+    title: "Neyin erişilebildiğini ölç"
+    body_md: |
+      "Erişemiyorum" çok geniş. Üç test, sorunu tek adımda daraltır:
+
+      ```
+      ping <ic_sunucu_ip>       # IP ile erişim var mı
+      nslookup <ic_sunucu_adi>  # iç ad çözümleniyor mu
+      ipconfig /all             # VPN adaptörü adres almış mı
+      ```
+
+      Kullanıcı adla erişemiyor ama IP ile erişiyorsa sorun kesinlikle DNS'tir.
+    verify_text: "Hangi test geçti, hangisi başarısız oldu?"
+    est_seconds: 300
+    edges:
+      - { label: "IP ile erişiliyor, isimle erişilemiyor",  to: N52 }
+      - { label: "Hiçbirine erişilemiyor",                  to: N51 }
+      - { label: "Yalnız bazı sistemlere erişilemiyor",     to: N92 }
+
+  - key: N51
+    type: talimat
+    title: "Tüneli ve yönlendirmeyi yeniden kur"
+    body_md: |
+      1. VPN'i kes, istemciyi kapat, 30 saniye bekle, yeniden bağlan.
+      2. `ipconfig /all` çıktısında **VPN adaptörünün adres aldığını** doğrula.
+      3. Ev ağının IP aralığı kurum ağıyla çakışıyor mu bak — ikisi de
+         `192.168.1.x` ise yönlendirme çakışır ve hiçbir şeye erişilemez.
+         Bu, evden çalışanlarda düşünüldüğünden sık görülür.
+    verify_text: "İç kaynaklara erişim geldi mi?"
+    est_seconds: 600
+    edges:
+      - { label: "Erişim geldi",                            to: N53 }
+      - { label: "Ev ağı ile kurum ağı çakışıyor",          to: N54 }
+      - { label: "Hâlâ erişilemiyor",                       to: N92 }
+
+  - key: N52
+    type: cozum
+    title: "Çözüldü — VPN üzerinden ad çözümleme"
+    root_cause: VPN_DNS
+    closure_note: "Tünel kuruluydu ama iç DNS kullanılmıyordu."
+    followup_md: |
+      Aynı belirti birden çok kullanıcıda varsa istemci profilindeki DNS
+      yapılandırması hatalıdır; tek tek düzeltmek yerine profili düzelttir.
+
+  - key: N53
+    type: cozum
+    title: "Çözüldü — tünel yeniden kuruldu"
+    root_cause: VPN_TUNEL
+    closure_note: "Tünel yarım kalmıştı; yeniden bağlanınca yönlendirme düzeldi."
+
+  - key: N54
+    type: cozum
+    title: "Çözüldü — ev ağı ile kurum ağı IP çakışması"
+    root_cause: VPN_IP_CAKISMASI
+    closure_note: "Kullanıcının ev ağı kurum ağıyla aynı aralığı kullanıyordu."
+    followup_md: |
+      Kalıcı çözüm kullanıcının ev modeminde ağ aralığını değiştirmesidir.
+      Kullanıcıya bunu yaptırmak L1 kapsamı dışında olabilir; adımı yazılı
+      gönder ve isteyip istemediğini sor.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N92
+    type: eskalasyon
+    title: "Ağ ekibine eskale et"
+    body_md: |
+      Cihaz tarafında yapılabilecekler tükendi.
+
+      Özete mutlaka ekle: **istemci sürümü, tam hata kodu, kullanıcının
+      bulunduğu yer (ev/ofis/misafir ağı)** ve bağlantının hangi aşamada
+      durduğu. Bunlar olmadan ağ ekibi baştan soracak.
+    escalate_to: "L2-Ag"
+
+  - key: N93
+    type: eskalasyon
+    title: "Bu bir VPN sorunu değil — NET-001 ile devam et"
+    body_md: |
+      Cihazda internet yok. VPN'in bağlanacağı bir bağlantı bulunmuyor.
+
+      Bu runbook'u kapat ve **NET-001 İnternete bağlanamıyor** ile devam et.
+    escalate_to: "NET-001"
+
+  - key: N94
+    type: eskalasyon
+    title: "Bu bir kimlik sorunu — ACC-001 ile devam et"
+    body_md: |
+      Hesap kilitli veya parola reddediliyor. VPN tarafında yapılacak bir şey
+      yok; tekrar denemek kilidi uzatır.
+
+      Bu runbook'u kapat ve **ACC-001 Hesap kilitli veya parola kabul
+      edilmiyor** ile devam et.
+    escalate_to: "ACC-001"
+
+  - key: N95
+    type: eskalasyon
+    title: "Önce kablosuz bağlantıyı düzelt — NET-002 ile devam et"
+    body_md: |
+      Kopmalar yalnız Wi-Fi üzerindeyken oluyor. Sorun tünelde değil, altındaki
+      kablosuz bağlantıda.
+
+      Bu runbook'u kapat ve **NET-002 Wi-Fi bağlanmıyor veya sürekli kopuyor**
+      ile devam et; kablosuz düzeldiğinde VPN de düzelecektir.
+    escalate_to: "NET-002"
+
+related: [NET-001, NET-002, ACC-001]

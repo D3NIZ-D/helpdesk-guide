@@ -21,7 +21,9 @@ faults:
   NO_POWER:
     terms: [güç gelmiyor, hiç tepki vermiyor, hiç açılmıyor, ışık yanmıyor,
             led yanmıyor, elektrik gelmiyor, kendi kendine kapanıyor,
-            şarj olmuyor, şarj almıyor, pil bitiyor, fişe takılı ama]
+            şarj olmuyor, şarj almıyor, pil bitiyor, fişe takılı ama,
+            pil dolmuyor, batarya dolmuyor, şarj etmiyor, şarj edilmiyor,
+            yüzde artmıyor, fişten çekince kapanıyor]
 
   NO_BOOT:
     terms: [boot etmiyor, başlamıyor, açılışta kalıyor, mavi ekran, bsod,
@@ -54,10 +56,11 @@ faults:
             yetkim yok, erişim reddedildi, access denied]
 
   SLOW:
-    terms: [yavaş, çok yavaş, donuyor, kasıyor, takılıyor, kilitleniyor,
+    terms: [yavaş, çok yavaş, yavaşladı, donuyor, kasıyor, takılıyor, kilitleniyor,
             geç açılıyor, uzun sürüyor, yanıt vermiyor, yanıt vermiyor durumunda,
             disk doldu, yer kalmadı, bellek yetersiz, fan sesi geliyor,
-            aşırı ısınıyor]
+            aşırı ısınıyor, ağır çalışıyor, ağır ağır, bekletiyor,
+            geç tepki veriyor]
 
   SECURITY:
     terms: [şüpheli e-posta, şüpheli mail, oltalama, phishing, sahte fatura,

@@ -1,0 +1,256 @@
+code: PWR-002
+tier: runbook
+title: "Laptop şarj olmuyor"
+summary: "Adaptör takılı ama pil dolmuyor, yavaş doluyor veya belli bir yüzdede duruyor."
+category: donanim/guc
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [laptop]
+
+tags: [sarj, batarya, adaptor, guc]
+
+aliases:
+  - { term: "laptop şarj olmuyor",        kind: belirti, weight: 1.0 }
+  - { term: "şarj almıyor",               kind: belirti, weight: 1.0 }
+  - { term: "takılı şarj edilmiyor",      kind: hata_kodu, weight: 1.2 }
+  - { term: "pil dolmuyor",               kind: belirti, weight: 1.0 }
+  - { term: "batarya şarj edilmiyor",     kind: belirti, weight: 1.0 }
+  - { term: "adaptör takılı ama yüzde artmıyor", kind: belirti, weight: 1.0 }
+  - { term: "fişten çekince kapanıyor",   kind: belirti, weight: 1.0 }
+  - { term: "plugged in not charging",    kind: hata_kodu, weight: 1.1 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Cihaz şu anda hangi durumda?"
+    body_md: |
+      Dört durum, dört ayrı arıza. Kullanıcıdan **görev çubuğundaki pil
+      simgesine** bakmasını ve üzerine gelince ne yazdığını okumasını iste.
+    est_seconds: 60
+    edges:
+      - { label: "Hiç açılmıyor, şarj ışığı da yanmıyor",   to: N90 }
+      - { label: "Çalışıyor ama 'takılı, şarj edilmiyor' diyor", to: N20 }
+      - { label: "Şarj oluyor ama belli bir yüzdede duruyor", to: N50 }
+      - { label: "Sadece fişteyken çalışıyor, çekince kapanıyor", to: N60 }
+
+  # ── Güç zinciri ───────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Güç zincirini ve adaptörü çapraz test et"
+    body_md: |
+      Ucuzdan pahalıya, her adımdan sonra pil simgesine bakarak:
+
+      1. Adaptörü cihaz ve priz tarafında **çıkar, tekrar tak**. USB-C ile
+         şarj oluyorsa **diğer USB-C portunu** dene — her port şarj desteklemez.
+      2. Uzatma veya priz grubu varsa **doğrudan duvar prizine** bağla.
+      3. Adaptör kablosunu boydan boya elle geç; cihaz ucuna yakın kısımda
+         kıvrılma veya ezilme var mı bak.
+      4. **Aynı model, çalıştığı bilinen bir adaptör** tak.
+      5. Dock üzerinden şarj oluyorsa dock'u çıkar, doğrudan adaptörle dene.
+    verify_text: "Pil simgesi 'şarj ediliyor' oldu mu, yüzde artıyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Şarj etmeye başladı",                     to: N21 }
+      - { label: "Sadece başka adaptörle şarj etti",        to: N22 }
+      - { label: "Hiçbiri işe yaramadı",                    to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — gevşek bağlantı, priz veya yanlış port"
+    root_cause: SARJ_BAGLANTI
+    closure_note: "Güç cihaza ulaşmıyordu; bağlantı veya priz kaynaklı."
+    followup_md: |
+      Sorun yanlış USB-C portuysa kullanıcıya hangi portun şarj ettiğini
+      göster ve mümkünse etiketle. Bilmediği sürece tekrar arayacaktır.
+
+  - key: N22
+    type: cozum
+    title: "Çözüldü — adaptör arızalı"
+    root_cause: SARJ_ADAPTOR_ARIZA
+    closure_note: "Cihazın kendi adaptörü güç vermiyor; başka adaptörle şarj ediyor."
+    part_required: laptop_guc_adaptoru
+    followup_md: |
+      Arızalı adaptörü **kullanımdan kaldır ve etiketle**, çekmeceye koyma.
+      Aynı adaptör üç ay sonra başka bir masada aynı vakayı üretir.
+
+  - key: N30
+    type: talimat
+    title: "Güç sürücülerini ve gömülü denetleyiciyi sıfırla"
+    body_md: |
+      Windows pili bir aygıt olarak görür; o aygıtın sürücüsü takılabilir.
+
+      1. `Aygıt Yöneticisi → Piller` → **Microsoft ACPI Uyumlu Denetim Yöntemi
+         Pili** aygıtını kaldır. Korkutucu görünür ama yeniden başlatınca
+         kendiliğinden geri gelir.
+      2. Cihazı **tam kapat** (hızlı başlatma kapalı olacak şekilde).
+      3. Adaptörü çıkar. Sökülebilir pilse çıkar. Güç düğmesine **30 saniye**
+         basılı tut, sonra hepsini tak ve aç.
+      4. Üreticinin reset prosedürü varsa (reset deliği, tuş kombinasyonu)
+         onu uygula.
+    verify_text: "Yeniden başlattıktan sonra şarj başladı mı?"
+    risk: orta
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Pil aygıtı yeniden başlatmadan sonra listede görünmezse
+      `Aygıt Yöneticisi → İşlem → Donanım değişikliklerini tara` çalıştır.
+
+      Bu adım kaydedilmemiş çalışmayı kaybettirir; başlamadan önce kullanıcıya
+      her şeyi kaydettirt.
+    est_seconds: 900
+    edges:
+      - { label: "Şarj başladı",                            to: N31 }
+      - { label: "Şarj başlamadı",                          to: N40 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — güç sürücüsü veya gömülü denetleyici takılmıştı"
+    root_cause: SARJ_SURUCU
+    closure_note: "Pil aygıtı sürücüsü sıfırlanınca şarj devam etti."
+
+  - key: N40
+    type: olcum
+    title: "Pil sağlık raporunu oku"
+    body_md: |
+      Yönetici komut isteminde:
+
+      ```
+      powercfg /batteryreport /output "%USERPROFILE%\Desktop\pil.html"
+      ```
+
+      Raporu aç ve **Design Capacity** ile **Full Charge Capacity** değerlerini
+      karşılaştır. Tam dolum kapasitesi tasarım kapasitesinin %60'ının altına
+      düşmüşse pil ömrünü doldurmuş demektir.
+
+      Rapor "Battery not detected" diyorsa pil elektriksel olarak devrede değil.
+    verify_text: "Tam dolum kapasitesi tasarım kapasitesinin yüzde kaçı?"
+    est_seconds: 300
+    edges:
+      - { label: "Kapasite %60'ın altında",                 to: N41 }
+      - { label: "Pil hiç algılanmıyor",                    to: N91 }
+      - { label: "Pil sağlıklı görünüyor ama şarj etmiyor", to: N91 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — pil ömrünü doldurmuş"
+    root_cause: BATARYA_OMRU
+    closure_note: "Pil kapasitesi kullanılabilir seviyenin altına düşmüş."
+    part_required: laptop_bataryasi
+    followup_md: |
+      Pil raporunu bilete ekle — değişim talebi onayı genelde bu rapora dayanır.
+
+      Aynı model cihazlarda üç veya daha fazla vaka çıktıysa filo genelinde
+      pil ömrü sonuna gelinmiştir; toplu değişim planlamak tek tek uğraşmaktan
+      ucuzdur.
+
+  # ── Şarj sınırlaması ──────────────────────────────────────────────
+  - key: N50
+    type: talimat
+    title: "Şarj sınırlama ayarını kontrol et"
+    body_md: |
+      Cihaz %60-80 civarında duruyorsa bu genelde arıza değil, **özelliktir**.
+      Üreticiler pil ömrünü uzatmak için şarjı sınırlayan bir mod sunar
+      (Lenovo, Dell, HP ve ASUS'ta farklı adlarla).
+
+      1. Üreticinin güç/pil yönetimi uygulamasını aç, şarj eşiği ayarını bul.
+      2. BIOS/UEFI içinde de aynı ayar olabilir.
+      3. Sınırlama varsa kullanıcıya **neden var olduğunu** anlat; kapatmadan
+         önce gerçekten gerekli mi diye sor.
+    verify_text: "Sınırlama ayarı bulundu mu, kaldırıldığında yüzde artıyor mu?"
+    est_seconds: 600
+    edges:
+      - { label: "Sınırlama vardı, açıklandı veya kaldırıldı", to: N51 }
+      - { label: "Böyle bir ayar yok",                      to: N40 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — üretici şarj sınırlaması etkindi"
+    root_cause: SARJ_SINIRLAMA
+    closure_note: "Pil koruma modu şarjı belirli bir yüzdede durduruyordu."
+    followup_md: |
+      Bu bir arıza değildi. Kullanıcıya ayarın ne işe yaradığını anlatmak,
+      aynı kullanıcıdan gelecek ikinci çağrıyı önler.
+
+  # ── Pil devrede değil ─────────────────────────────────────────────
+  - key: N60
+    type: talimat
+    title: "Pilin gerçekten devrede olduğunu doğrula"
+    body_md: |
+      Fişten çekince anında kapanıyorsa pil ya yok, ya oturmamış, ya da
+      tamamen ölmüş.
+
+      1. `Aygıt Yöneticisi → Piller` altında pil aygıtı listeleniyor mu?
+      2. Görev çubuğundaki simge pil mi gösteriyor, yoksa yalnız fiş mi?
+      3. Sökülebilir pilse çıkar, temas noktalarını kontrol et, sıkıca tak.
+      4. Cihazın pil bölmesinde şişme veya deformasyon var mı bak.
+    verify_text: "Pil işletim sisteminde görünüyor mu, fiş çekilince ayakta kalıyor mu?"
+    risk: orta
+    requires_user_downtime: true
+    est_seconds: 420
+    edges:
+      - { label: "Pil oturmamıştı, düzeltildi",             to: N61 }
+      - { label: "Pilde şişme veya deformasyon var",        to: N92 }
+      - { label: "Pil görünüyor ama yine de kapanıyor",     to: N40 }
+
+  - key: N61
+    type: cozum
+    title: "Çözüldü — pil tam oturmamıştı"
+    root_cause: BATARYA_OTURMAMIS
+    closure_note: "Pil bağlantısı gevşekti; oturtulunca güç kesintisi geçti."
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "Bu bir şarj sorunu değil — PWR-001 ile devam et"
+    body_md: |
+      Cihaz hiç açılmıyor ve hiçbir ışık yanmıyor. Bu bir şarj vakası değil,
+      bir güç vakasıdır.
+
+      Bu runbook'u kapat ve **PWR-001 Bilgisayar hiç açılmıyor** ile devam et.
+    escalate_to: "PWR-001"
+
+  - key: N91
+    type: eskalasyon
+    title: "Donanım servisine eskale et"
+    body_md: |
+      Adaptör ve sürücü tarafı elendi, pil raporu sorunu açıklamıyor.
+      Şarj devresi veya anakart tarafı olasılığı yüksek.
+
+      Özete **pil raporundaki kapasite değerlerini** ve denenen adaptörleri ekle.
+    escalate_to: "L2-Donanim"
+
+  - key: N92
+    type: eskalasyon
+    title: "ACİL: Şişmiş pil — cihazı kullanımdan çıkar"
+    body_md: |
+      **Şişmiş bir lityum pil yangın riskidir. Sorun giderme burada biter.**
+
+      1. Cihazı **kapat** ve adaptörü çıkar.
+      2. Şarj etmeyi **deneme**. Pili delmeye, bastırmaya veya zorla çıkarmaya
+         çalışma.
+      3. Cihazı yanıcı olmayan bir yüzeye al, kâğıt ve kumaştan uzak tut.
+      4. Donanım servisini **hemen** ara; bileti sıraya koyup bekleme.
+      5. Kullanıcıya cihazı çantasına koymamasını söyle.
+    escalate_to: "L2-Donanim (acil)"
+    summary_template: |
+      ⚠ ŞİŞMİŞ PİL — GÜVENLİK RİSKİ, ACİL
+
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}}
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Pilde fiziksel deformasyon tespit edildi. Cihaz kullanımdan çıkarıldı,
+      şarj edilmiyor. Cihaz modeli, seri numarası ve bulunduğu konum bilete
+      eklenmeli. Yerinde değişim veya güvenli bertaraf gerekiyor.
+      {{closing}}
+
+related: [PWR-001]

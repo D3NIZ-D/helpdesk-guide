@@ -35,7 +35,12 @@ devices:
 
   guc_kaynagi:
     terms: [güç kaynağı, adaptör, şarj aleti, şarj cihazı, power supply, psu,
-            güç kablosu, priz, uzatma, uzatma kablosu, çoklu priz, akım korumalı priz]
+            güç kablosu, priz, uzatma, uzatma kablosu, çoklu priz, akım korumalı priz,
+            şarj, şarj kablosu, fiş]
+
+  batarya:
+    terms: [batarya, pil, akü, battery, pil ömrü, batarya sağlığı,
+            şarj yüzdesi, pil simgesi]
 
   yazici:
     weight: 1.1
@@ -93,7 +98,8 @@ devices:
   guvenlik:
     terms: [antivirüs, antivirus, defender, karantina, zararlı, virüs, malware,
             fidye yazılımı, ransomware, oltalama, phishing, şüpheli e-posta,
-            sahte mail, dolandırıcılık]
+            sahte mail, dolandırıcılık, tehdit, uç nokta koruması, endpoint,
+            şifrelenmiş dosya, fidye notu]
 
   yazilim_surucu:
     terms: [sürücü, driver, aygıt sürücüsü, firmware, bios, uefi, güncelleme,

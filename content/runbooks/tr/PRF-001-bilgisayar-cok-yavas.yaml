@@ -1,0 +1,317 @@
+code: PRF-001
+tier: runbook
+title: "Bilgisayar çok yavaş veya donuyor"
+summary: "Sistem geneli yavaş, uygulamalar geç açılıyor ya da arada kilitleniyor."
+category: performans/genel
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [performans, yavaslik, donma, gorev-yoneticisi]
+
+aliases:
+  - { term: "bilgisayar çok yavaş",      kind: belirti, weight: 1.0 }
+  - { term: "bilgisayarım yavaşladı",    kind: belirti, weight: 1.0 }
+  - { term: "sürekli donuyor",           kind: belirti, weight: 1.0 }
+  - { term: "kasıyor takılıyor",         kind: belirti, weight: 0.9 }
+  - { term: "uygulamalar geç açılıyor",  kind: belirti, weight: 0.9 }
+  - { term: "yanıt vermiyor durumuna geçiyor", kind: belirti, weight: 0.9 }
+  - { term: "açılışı çok uzun sürüyor",  kind: belirti, weight: 0.9 }
+  - { term: "computer is very slow",     kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Yavaşlık ne zaman başladı ve neyi etkiliyor?"
+    body_md: |
+      Bu soru arama uzayını dörde bölüyor; atlarsan sonraki her adım tahmin olur.
+
+      Kullanıcıya sor: **her zaman mı böyleydi**, yoksa **belli bir günden sonra mı**
+      başladı? Tek bir uygulamada mı, her şeyde mi?
+
+      "Son güncellemeden sonra" cevabı çok değerlidir — not al.
+    est_seconds: 60
+    edges:
+      - { label: "Her zaman yavaştı, hiç hızlı olmadı",   to: N20 }
+      - { label: "Son günlerde yavaşladı",                to: N30 }
+      - { label: "Sadece belirli bir uygulamada yavaş",   to: N60 }
+      - { label: "Şu anda tamamen donuk / kilitlendi",    to: N70 }
+
+  # ── Donanım yetersizliği kolu ─────────────────────────────────────
+  - key: N20
+    type: olcum
+    title: "Donanımı ve yaşını oku"
+    body_md: |
+      `Ayarlar → Sistem → Hakkında` ve `Görev Yöneticisi → Performans`:
+
+      * **Depolama tipi:** SSD mi, HDD mi? Görev Yöneticisi → Performans → Disk,
+        model adının altında yazar.
+      * **RAM:** toplam ve "kullanımda" değeri.
+      * Cihazın satın alma yılı.
+
+      Beş yaşında, HDD'li, 8 GB RAM'li bir makine yazılımla hızlanmaz.
+      Bunu erken söylemek, üç saat boş yere temizlik yapmaktan iyidir.
+    verify_text: "Depolama tipi ve RAM miktarı not edildi mi?"
+    est_seconds: 120
+    edges:
+      - { label: "HDD kullanıyor, SSD yok",                to: N21 }
+      - { label: "RAM 8 GB altı ve sürekli dolu",          to: N22 }
+      - { label: "Donanım yeterli görünüyor",              to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — donanım yetersiz, SSD yükseltmesi gerekiyor"
+    root_cause: DONANIM_HDD
+    closure_note: "Sistem diski HDD; yavaşlığın kaynağı depolama."
+    part_required: ssd_yukseltme
+    followup_md: |
+      Yazılım tarafında yapılacak temizlik bu cihazda en fazla birkaç saniye
+      kazandırır. Yükseltme talebini aç ve kullanıcıya beklenen kazanımı söyle.
+
+      Aynı model cihazlardan üç veya daha fazla benzer çağrı geldiyse toplu
+      yükseltme planla — tek tek çözmek üç kat zaman alıyor.
+
+  - key: N22
+    type: cozum
+    title: "Çözüldü — bellek yetersiz"
+    root_cause: RAM_YETERSIZ
+    closure_note: "Bellek kullanımı sürekli doluya yakın; sistem disk belleğine düşüyor."
+    part_required: ram_yukseltme
+    followup_md: "Yükseltme mümkün değilse kullanıcıya aynı anda açık uygulama sayısını azaltmasını anlat."
+
+  # ── Darboğaz ölçümü ───────────────────────────────────────────────
+  - key: N30
+    type: olcum
+    title: "Görev Yöneticisi'nde darboğazı oku"
+    body_md: |
+      `Ctrl + Shift + Esc` → **Performans** sekmesi. Yavaşlık yaşanırken bak,
+      boştayken değil.
+
+      Neye bakacaksın:
+
+      * **Disk %100** ve sürekli orada → depolama darboğazı
+      * **CPU %100**, tek bir süreç yüksek → o süreci bul
+      * **Bellek %90+** ve "disk belleği" büyüyor → RAM darboğazı
+      * Hepsi normal ama sistem yine ağır → başlangıç/profil/zararlı tarafı
+    verify_text: "Hangi kaynak sürekli tepede?"
+    est_seconds: 180
+    edges:
+      - { label: "Disk sürekli %100",                     to: N40 }
+      - { label: "CPU yüksek, belirli bir süreç var",     to: N50 }
+      - { label: "Bellek dolu, disk belleği şişiyor",     to: N22 }
+      - { label: "Hepsi normal görünüyor",                to: N80 }
+
+  - key: N40
+    type: talimat
+    title: "Disk darboğazını gider"
+    body_md: |
+      Sırayla, her adımdan sonra Görev Yöneticisi'ne geri bakarak:
+
+      1. **Windows Update** arka planda çalışıyor mu? Bitmesini bekle —
+         en sık sebep budur ve 20 dakika sonra kendiliğinden geçer.
+      2. **OneDrive / bulut eşitlemesi** senkronize ediyor mu? Simgesine bak.
+      3. `Ayarlar → Gizlilik → Arama` altından **arama indeksleme** durumunu
+         kontrol et; yeniden inşa ediyorsa bitmesini bekle.
+      4. Disk sağlığını oku: `wmic diskdrive get status` veya üretici aracı.
+    verify_text: "Disk kullanımı normale döndü mü, sistem hızlandı mı?"
+    est_seconds: 600
+    edges:
+      - { label: "Disk rahatladı, sistem hızlandı",       to: N41 }
+      - { label: "Diskte SMART uyarısı / hata var",       to: N92 }
+      - { label: "Disk hâlâ tepede",                      to: N80 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — arka plan işi diski dolduruyordu"
+    root_cause: DISK_DARBOGAZ
+    closure_note: "Güncelleme, bulut eşitlemesi veya indeksleme diski meşgul ediyordu."
+    followup_md: |
+      Kullanıcıya bunun geçici olduğunu ve neden olduğunu söyle. Söylenmezse
+      aynı kullanıcı bir sonraki güncelleme gününde tekrar arar.
+
+  - key: N50
+    type: talimat
+    title: "CPU'yu tüketen süreci belirle ve ele"
+    body_md: |
+      Görev Yöneticisi → **Ayrıntılar** → CPU sütununa göre sırala.
+
+      1. Sürecin **hangi uygulamaya ait olduğunu** bul: sağ tık →
+         Dosya konumunu aç.
+      2. Tanıdık bir uygulamaysa kapat ve yeniden aç.
+      3. Tarayıcıysa sekme sayısına ve eklentilere bak.
+      4. Süreç adı tanıdık değilse veya sistem klasörü dışında çalışıyorsa
+         **kapatmadan önce adını ve yolunu not al** — sonraki adım buna bakacak.
+    verify_text: "Süreç durdurulunca sistem rahatladı mı?"
+    risk: orta
+    est_seconds: 420
+    edges:
+      - { label: "Süreç durduruldu, sistem rahatladı",    to: N51 }
+      - { label: "Süreç tanınmıyor veya şüpheli görünüyor", to: N80 }
+      - { label: "Durdurmak işe yaramadı",                to: N80 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — tek bir süreç işlemciyi tüketiyordu"
+    root_cause: CPU_SUREC
+    closure_note: "Belirli bir uygulama sürekli işlemci tüketiyordu."
+    followup_md: |
+      Süreç tekrar ediyorsa uygulamayı güncelle ya da kaldır. Aynı süreç
+      birden çok cihazda çıkıyorsa bu bir dağıtım sorunudur, kullanıcı sorunu değil.
+
+  # ── Tek uygulama kolu ─────────────────────────────────────────────
+  - key: N60
+    type: talimat
+    title: "Sorunlu uygulamayı izole et"
+    body_md: |
+      Yavaşlık tek bir uygulamadaysa sistemi temizlemenin anlamı yok.
+
+      1. Uygulamayı tamamen kapat (sistem tepsisinden de çık) ve yeniden aç.
+      2. Uygulamanın **önbelleğini/geçici dosyalarını** temizle.
+      3. Varsa üreticinin **onarım (repair)** seçeneğini çalıştır.
+      4. Başka bir kullanıcı profiliyle aynı uygulamayı dene — sorun profile mi
+         bağlı, kuruluma mı, bu ayırır.
+    verify_text: "Uygulama normal hızında çalışıyor mu?"
+    est_seconds: 600
+    edges:
+      - { label: "Düzeldi",                               to: N61 }
+      - { label: "Başka profilde sorunsuz çalışıyor",     to: N62 }
+      - { label: "Her profilde yavaş",                    to: N91 }
+
+  - key: N61
+    type: cozum
+    title: "Çözüldü — uygulama önbelleği veya kurulumu bozuktu"
+    root_cause: UYGULAMA_BOZUK
+    closure_note: "Uygulamanın kendi durumu bozulmuştu; onarım/temizlik yeterli oldu."
+
+  - key: N62
+    type: cozum
+    title: "Çözüldü — kullanıcı profiline bağlı uygulama sorunu"
+    root_cause: PROFIL_UYGULAMA
+    closure_note: "Sorun uygulamada değil, kullanıcının profilindeki ayarlardaydı."
+    followup_md: "Profil bozulması tekrar ederse profili yeniden oluşturmayı L2 ile planla."
+
+  # ── Donmuş sistem kolu ────────────────────────────────────────────
+  - key: N70
+    type: talimat
+    title: "Donan sistemi kurtar ve nedenini yakala"
+    body_md: |
+      Sert kapatma en son çaredir — kapattığın anda nedeni gösteren kanıt da gider.
+
+      1. `Ctrl + Shift + Esc` ile Görev Yöneticisi'ni açmayı dene; açılıyorsa
+         hangi sürecin **Yanıt vermiyor** olduğunu not al.
+      2. `Ctrl + Alt + Del` ekranı geliyorsa sistem tamamen kilitli değildir, bekle.
+      3. Laptopta **fan sesi ve kasa sıcaklığını** kontrol et; aşırı ısınma
+         donmanın sık ama gözden kaçan sebebidir.
+      4. Kurtardıktan sonra `Olay Görüntüleyici → Windows Günlükleri → Sistem`
+         altında donma saatine bak.
+    verify_text: "Sistem yanıt verdi mi, donma anında ne çalışıyordu?"
+    risk: orta
+    requires_user_downtime: true
+    est_seconds: 600
+    edges:
+      - { label: "Yanıt verdi, suçlu süreç belirlendi",   to: N50 }
+      - { label: "Cihaz aşırı ısınmış, fan sesi yüksek",  to: N71 }
+      - { label: "Tamamen kilitliydi, sert kapatma gerekti", to: N80 }
+
+  - key: N71
+    type: cozum
+    title: "Çözüldü — aşırı ısınma nedeniyle donma"
+    root_cause: ASIRI_ISINMA
+    closure_note: "Cihaz ısındıkça hız düşürüyor ve kilitleniyordu."
+    followup_md: |
+      Havalandırma kanallarının temizliği bakım işidir, tek seferlik çözüm değil.
+      Cihaz için temizlik/termal macun bakımı planla; tekrar edecektir.
+
+  # ── Genel temizlik ────────────────────────────────────────────────
+  - key: N80
+    type: talimat
+    title: "Başlangıç programlarını temizle ve zararlı yazılım taraması yap"
+    body_md: |
+      Buraya kadar gelen vakalarda sebep genelde birikmiş başlangıç yükü
+      ya da zararlı yazılımdır.
+
+      1. Görev Yöneticisi → **Başlangıç** → yüksek etkili ve gereksiz olanları
+         devre dışı bırak. **Kullanıcıya sorarak** — bir kullanıcının gereksizi
+         diğerinin iş aracı olabilir.
+      2. `Ayarlar → Uygulamalar` altında tanınmayan, yakın tarihli kurulumlara bak.
+      3. Tam sistem antivirüs taraması başlat.
+      4. `sfc /scannow` ile sistem dosyalarını doğrula.
+    verify_text: "Yeniden başlattıktan sonra açılış ve genel hız düzeldi mi?"
+    risk: orta
+    requires_admin: true
+    est_seconds: 1800
+    edges:
+      - { label: "Düzeldi",                               to: N81 }
+      - { label: "Tarama zararlı yazılım buldu",          to: N93 }
+      - { label: "Düzelmedi",                             to: N90 }
+
+  - key: N81
+    type: cozum
+    title: "Çözüldü — başlangıç yükü temizlendi"
+    root_cause: BASLANGIC_PROGRAMLARI
+    closure_note: "Açılışta gereksiz yere çalışan programlar sistemi yavaşlatıyordu."
+    followup_md: |
+      Bu kayıt sık tekrar ediyorsa sorun tek tek cihazlarda değil, dağıtım
+      politikasındadır — hangi yazılımların otomatik başlatıldığını gözden geçir.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "L2'ye eskale et — sebep bulunamadı"
+    body_md: |
+      Ölçüm yapıldı, darboğaz bulunamadı veya giderilemedi. Özete
+      **Görev Yöneticisi'nde gördüğün değerleri** yaz — L2 aynı ölçümü
+      baştan yapmasın.
+    escalate_to: "L2-Sistem"
+
+  - key: N91
+    type: eskalasyon
+    title: "Uygulama ekibine eskale et"
+    body_md: |
+      Yavaşlık tek bir uygulamada ve her kullanıcı profilinde tekrar ediyor.
+      Bu bir uygulama sorunu; sistem tarafında yapılacak bir şey yok.
+    escalate_to: "L2-Uygulama"
+
+  - key: N92
+    type: eskalasyon
+    title: "ACİL: Disk arızası şüphesi — önce yedek al"
+    body_md: |
+      Diskte SMART uyarısı var. **Performans çalışması yapma, disk ömrünü
+      tüketirsin.**
+
+      1. Kullanıcı verisinin yedeğini **hemen** al; disk her an gidebilir.
+      2. Donanım değişimi kaydı aç.
+      3. Kullanıcıya cihazı kapatmamasını, ama kritik iş yapmamasını söyle.
+    escalate_to: "L2-Donanim (acil)"
+    summary_template: |
+      ⚠ DİSK ARIZASI ŞÜPHESİ — VERİ RİSKİ
+
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}}
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Diskte SMART uyarısı tespit edildi. Yedek durumu ve disk modeli
+      bilete eklenmeli. Donanım değişimi gerekiyor.
+      {{closing}}
+
+  - key: N93
+    type: eskalasyon
+    title: "Zararlı yazılım bulundu — SEC-002 ile devam et"
+    body_md: |
+      Tarama bir tehdit buldu. Bu artık bir performans vakası değil,
+      bir güvenlik vakasıdır.
+
+      Bu runbook'u kapat ve **SEC-002 Antivirüs uyarısı / karantina** ile
+      devam et. Temizleyip geçme — bulaşmanın nasıl olduğu araştırılmalı.
+    escalate_to: "SEC-002"
+
+related: [PRF-002, SEC-002]

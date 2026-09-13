@@ -58,3 +58,5 @@ steps:
     note: >
       Teams'i çarpıdan kapatmak yetmez; sistem tepsisinden çıkış yaptır.
     est_seconds: 120
+
+related: [NET-002]

@@ -176,3 +176,48 @@ class TestFullPipeline:
         expression = normalize_query('monitor" OR aliases:x NEAR(').fts_query()
         assert "NEAR" not in expression.upper().replace('"NEAR"*', "")
         assert expression.count('"') % 2 == 0
+
+
+class TestPossessiveSuffix:
+    """Third-person possessive is the most common suffix in fault reports."""
+
+    @pytest.mark.parametrize(
+        "base,inflected",
+        [("batarya", "bataryasi"), ("dosya", "dosyasi"), ("ses", "sesi")],
+    )
+    def test_the_possessive_form_reaches_the_base_form(self, base, inflected):
+        # "bataryası dolmuyor" used to stem to a token that shared nothing
+        # with "batarya", so the lexicon entry and every alias built on it
+        # were unreachable from the query.
+        assert stem(inflected) == stem(base)
+
+    def test_stacked_suffixes_still_collapse(self):
+        assert stem("bataryasinin") == stem("batarya")
+
+
+class TestNegationAgreement:
+    def test_a_positive_verb_is_not_read_as_its_negative(self, lexicon):
+        # Stemming "çalışmıyor" yields "calis", which is also the stem of
+        # "çalışıyor". Without a negation gate the intent classifier read
+        # "her şey ağır çalışıyor" as NOT_WORKING -- the opposite of what
+        # the sentence says.
+        assert "NOT_WORKING" not in normalize_query("her sey agir calisiyor", lexicon).intents
+
+    def test_the_negative_form_still_classifies(self, lexicon):
+        assert "NOT_WORKING" in normalize_query("monitör çalışmıyor", lexicon).intents
+
+
+class TestExpansionBudget:
+    def test_a_token_contributes_at_most_its_concept(self, lexicon):
+        # Fanning out to every synonym made one query word add eight OR
+        # terms, all landing on whichever record listed the most synonyms.
+        expanded = normalize_query("ekran", lexicon).expanded
+        assert "monitor" in expanded          # the bridge still works
+        assert len(expanded) <= 3, expanded   # but it is not a storm
+
+    def test_abbreviations_still_expand(self, lexicon):
+        # Expansion pushes *stems*, so "bsod" -> "mavi ekran" arrives as
+        # ("mav", "ekran"); the trailing wildcard reaches "mavi" in the index.
+        expanded = normalize_query("bsod aliyorum", lexicon).expanded
+        assert stem("mavi") in expanded
+        assert "ekran" in expanded

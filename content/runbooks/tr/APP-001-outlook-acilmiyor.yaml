@@ -1,0 +1,295 @@
+code: APP-001
+tier: runbook
+title: "Outlook açılmıyor veya posta gönderilemiyor"
+summary: "Outlook başlamıyor, donuyor ya da açılıyor fakat posta alıp göndermiyor."
+category: uygulama/eposta
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [outlook, eposta, exchange, profil, ost]
+
+aliases:
+  - { term: "outlook açılmıyor",          kind: belirti, weight: 1.0 }
+  - { term: "outlook donuyor",            kind: belirti, weight: 1.0 }
+  - { term: "mail gönderemiyorum",        kind: belirti, weight: 1.0 }
+  - { term: "posta gitmiyor",             kind: belirti, weight: 1.0 }
+  - { term: "e-posta gelmiyor",           kind: belirti, weight: 1.0 }
+  - { term: "gönderilmiş öğelerde takılı kaldı", kind: belirti, weight: 1.0 }
+  - { term: "outlook yanıt vermiyor",     kind: belirti, weight: 0.9 }
+  - { term: "posta kutusu açılmıyor",     kind: belirti, weight: 0.9 }
+  - { term: "outlook wont open",          kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Sorun tam olarak nerede?"
+    body_md: |
+      "Outlook çalışmıyor" dört ayrı arızayı birden anlatır. Kullanıcıya
+      **ekranda ne gördüğünü** sor, yorumunu değil.
+    est_seconds: 60
+    edges:
+      - { label: "Hiç açılmıyor veya açılışta donuyor",      to: N20 }
+      - { label: "Açılıyor ama posta alıp göndermiyor",      to: N40 }
+      - { label: "Tek bir mesaj gönderilemiyor / takıldı",   to: N60 }
+      - { label: "Sürekli parola soruyor, kabul etmiyor",    to: N93 }
+
+  # ── Açılmıyor kolu ────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Güvenli modda aç"
+    body_md: |
+      Güvenli mod eklentileri ve özel ayarları devre dışı bırakır; açılıyorsa
+      sorunun nerede olmadığını da öğrenmiş olursun.
+
+      Çalıştır kutusuna: `outlook.exe /safe`
+
+      Açılan pencerede profil seçimi gelirse varsayılan profille devam et.
+    verify_text: "Güvenli modda Outlook açıldı mı?"
+    est_seconds: 180
+    edges:
+      - { label: "Güvenli modda açıldı",                    to: N21 }
+      - { label: "Güvenli modda da açılmıyor",              to: N30 }
+
+  - key: N21
+    type: talimat
+    title: "Sorunlu eklentiyi bul ve devre dışı bırak"
+    body_md: |
+      `Dosya → Seçenekler → Eklentiler → Git`
+
+      1. **Tüm** COM eklentilerinin işaretini kaldır, Outlook'u normal aç.
+      2. Açılıyorsa eklentileri **ikişer ikişer** geri aç, her turda yeniden
+         başlat. Teker teker açmak dört kat uzun sürer.
+      3. Suçluyu bulunca devre dışı bırak ve hangi eklenti olduğunu bilete yaz.
+
+      Eklenti kurumsal bir araçsa kaldırmadan önce sahibine haber ver.
+    verify_text: "Outlook normal modda sorunsuz açılıyor mu?"
+    est_seconds: 900
+    edges:
+      - { label: "Suçlu eklenti bulundu ve kapatıldı",      to: N22 }
+      - { label: "Tüm eklentiler kapalıyken de açılmıyor",  to: N30 }
+
+  - key: N22
+    type: cozum
+    title: "Çözüldü — eklenti çakışması"
+    root_cause: EKLENTI_CAKISMASI
+    closure_note: "Bir COM eklentisi Outlook'un açılmasını engelliyordu."
+    followup_md: |
+      Aynı eklenti birden çok cihazda çıkıyorsa bu bir dağıtım sorunudur.
+      Eklenti sürümünü ve etkilenen kullanıcı sayısını uygulama ekibine bildir.
+
+  - key: N30
+    type: talimat
+    title: "Profili onar, gerekirse yeniden oluştur"
+    body_md: |
+      Önce onarım, sonra yeniden oluşturma. Sıralamayı ters çevirme.
+
+      1. `Dosya → Hesap Ayarları → Hesap Ayarları → Onar`
+      2. Düzelmezse `Denetim Masası → Mail (Microsoft Outlook)` →
+         **Profilleri Göster** → yeni bir profil oluştur, varsayılan yap.
+      3. Yeni profille aç ve posta kutusunun eşitlenmesini bekle.
+    verify_text: "Yeni veya onarılmış profille Outlook açılıyor mu?"
+    risk: yuksek
+    requires_user_downtime: true
+    rollback_md: |
+      Eski profili **silme**, sadece varsayılanı değiştir. Yeni profil sorun
+      çıkarırsa `Denetim Masası → Mail → Profilleri Göster` üzerinden eski
+      profili yeniden varsayılan yap.
+
+      Yeni profil oluşturmak yerel arşivleri (PST) ve imzaları taşımaz.
+      Devam etmeden önce kullanıcıya **yerel PST dosyası var mı** diye sor;
+      varsa yolunu not al ve yeni profile elle ekle.
+    est_seconds: 1800
+    edges:
+      - { label: "Açıldı",                                  to: N31 }
+      - { label: "Yeni profille de açılmıyor",              to: N91 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — Outlook profili bozuktu"
+    root_cause: PROFIL_BOZUK
+    closure_note: "Profil onarıldı veya yeniden oluşturuldu."
+    followup_md: |
+      Yeni profil oluşturulduysa kullanıcıya şunları hatırlat: imza, kurallar,
+      ve varsa yerel PST bağlantısı yeniden kurulmalı. Söylenmezse ertesi
+      gün "imzam gitti" diye ikinci çağrı gelir.
+
+  # ── Posta akmıyor kolu ────────────────────────────────────────────
+  - key: N40
+    type: olcum
+    title: "Bağlantı durumunu pencerenin altından oku"
+    body_md: |
+      Outlook penceresinin **sağ alt köşesi** tam olarak ne yazıyor?
+
+      * **Bağlandı** → sunucuya erişim var, sorun eşitlemede
+      * **Çevrimdışı çalışılıyor** → kullanıcı düğmeye basmış
+      * **Bağlantısı kesildi** / **Bağlanmayı deniyor** → ağ veya sunucu tarafı
+      * **Parola isteniyor** → kimlik tarafı
+    verify_text: "Durum çubuğunda hangi ifade yazıyor?"
+    est_seconds: 60
+    edges:
+      - { label: "Çevrimdışı çalışılıyor yazıyor",          to: N41 }
+      - { label: "Bağlandı yazıyor ama posta akmıyor",      to: N50 }
+      - { label: "Bağlantısı kesildi / bağlanmayı deniyor", to: N45 }
+      - { label: "Parola istiyor",                          to: N93 }
+
+  - key: N41
+    type: talimat
+    title: "Çevrimdışı çalışma modunu kapat"
+    body_md: |
+      `Gönder/Al` sekmesi → **Çevrimdışı Çalış** düğmesinin basılı olup
+      olmadığına bak, basılıysa kaldır.
+
+      Bu düğmeye kullanıcılar yanlışlıkla basıyor ve belirtisi tam olarak
+      "posta gelmiyor" oluyor. Vakaların şaşırtıcı bir kısmı burada biter.
+    verify_text: "Durum çubuğu Bağlandı oldu ve posta akmaya başladı mı?"
+    est_seconds: 60
+    edges:
+      - { label: "Posta akmaya başladı",                    to: N42 }
+      - { label: "Hâlâ akmıyor",                            to: N50 }
+
+  - key: N42
+    type: cozum
+    title: "Çözüldü — çevrimdışı çalışma modu açıktı"
+    root_cause: CEVRIMDISI_MOD
+    closure_note: "Outlook elle çevrimdışına alınmıştı."
+    followup_md: "Kullanıcıya düğmeyi göster; bilmediği için tekrar basacaktır."
+
+  - key: N45
+    type: talimat
+    title: "Ağ ve sunucu erişimini doğrula"
+    body_md: |
+      1. Tarayıcıdan **web posta** arayüzüne gir. Açılıyorsa sorun sunucuda
+         değil, istemcidedir — bu tek test yarım saat kazandırır.
+      2. Cihazda genel internet erişimi var mı kontrol et.
+      3. Uzaktan çalışıyorsa VPN gerekiyor mu, bağlı mı?
+    verify_text: "Web posta açılıyor mu, Outlook yeniden bağlandı mı?"
+    est_seconds: 300
+    edges:
+      - { label: "Web posta çalışıyor, Outlook bağlandı",   to: N46 }
+      - { label: "Web posta da açılmıyor, internet yok",    to: N92 }
+      - { label: "Web posta çalışıyor ama Outlook bağlanmıyor", to: N50 }
+
+  - key: N46
+    type: cozum
+    title: "Çözüldü — geçici ağ veya bağlantı kesintisi"
+    root_cause: AG_KESINTISI
+    closure_note: "Bağlantı geri geldiğinde Outlook kendiliğinden eşitlendi."
+
+  - key: N50
+    type: talimat
+    title: "Önbelleği ve posta kutusu boyutunu kontrol et"
+    body_md: |
+      1. `Dosya → Hesap Ayarları → Veri Dosyaları` → OST dosyasının **boyutuna**
+         bak. Çok büyük bir OST eşitlemeyi durdurur.
+      2. `Dosya → Araçlar → Posta Kutusu Temizliği` ile kota durumunu oku.
+         Kota doluysa gönderme durur — belirtisi "posta gitmiyor" olur.
+      3. Önbellek modunda **eşitlenen süreyi kısalt** (örneğin 12 ay),
+         eşitlemenin baştan yapılmasını bekle.
+    verify_text: "Eşitleme tamamlandı ve posta akıyor mu?"
+    risk: orta
+    requires_user_downtime: true
+    rollback_md: |
+      Eşitleme süresini kısaltmak eski postaları **sunucudan silmez**,
+      yalnız yerel kopyayı kaldırır; süreyi geri uzatırsan geri gelirler.
+      OST dosyasını elle silmeden önce kullanıcının posta kutusunun
+      sunucuda olduğunu web postadan doğrula.
+    est_seconds: 1800
+    edges:
+      - { label: "Eşitleme düzeldi, posta akıyor",          to: N51 }
+      - { label: "Posta kutusu kotası dolu",                to: N52 }
+      - { label: "Düzelmedi",                               to: N91 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — yerel önbellek (OST) sorunu"
+    root_cause: OST_BOZUK
+    closure_note: "Yerel önbellek eşitlemeyi engelliyordu; yenilendi."
+
+  - key: N52
+    type: cozum
+    title: "Çözüldü — posta kutusu kotası dolmuş"
+    root_cause: KUTU_DOLU
+    closure_note: "Kota dolduğu için gönderme durmuştu."
+    followup_md: |
+      Kota artırımı kalıcı çözüm değil; kullanıcıya arşivleme alışkanlığını
+      anlat. Aynı kullanıcı altı ay sonra yine arayacaktır.
+
+  # ── Takılı mesaj kolu ─────────────────────────────────────────────
+  - key: N60
+    type: talimat
+    title: "Takılı mesajı giden kutusundan çıkar"
+    body_md: |
+      Büyük ekli bir mesaj giden kutusunda takılırsa **arkasındaki her şeyi**
+      bloke eder; kullanıcı bunu "hiçbir mailim gitmiyor" diye anlatır.
+
+      1. **Giden Kutusu** klasörünü aç, takılı mesajı bul.
+      2. Outlook'u çevrimdışına al, mesajı taslaklara taşı veya sil.
+      3. Çevrimiçine dön, kuyruğun boşaldığını doğrula.
+      4. Ek boyutu sınırı aşıyorsa dosyayı bulut bağlantısı olarak gönderttir.
+    verify_text: "Giden kutusu boşaldı ve yeni mesajlar gidiyor mu?"
+    est_seconds: 300
+    edges:
+      - { label: "Kuyruk boşaldı, postalar gidiyor",        to: N61 }
+      - { label: "Alıcıdan hata bildirimi (NDR) dönüyor",   to: N94 }
+      - { label: "Mesaj hâlâ takılı",                       to: N91 }
+
+  - key: N61
+    type: cozum
+    title: "Çözüldü — giden kutusunda takılı mesaj"
+    root_cause: TAKILI_MESAJ
+    closure_note: "Gönderilemeyen bir mesaj kuyruğu tıkıyordu."
+    followup_md: "Neden takıldığını kullanıcıya söyle — genelde ek boyutudur ve tekrar eder."
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N91
+    type: eskalasyon
+    title: "Posta ekibine eskale et"
+    body_md: |
+      İstemci tarafında yapılabilecekler tükendi. Özete **durum çubuğunda ne
+      yazdığını**, web postanın çalışıp çalışmadığını ve denenen adımları yaz.
+    escalate_to: "L2-Posta"
+
+  - key: N92
+    type: eskalasyon
+    title: "Bu bir posta sorunu değil — NET-001 ile devam et"
+    body_md: |
+      Web posta da açılmıyor ve cihazda internet yok. Sorun Outlook'ta değil,
+      ağ bağlantısında.
+
+      Bu runbook'u kapat ve **NET-001 İnternete bağlanamıyor** ile devam et.
+    escalate_to: "NET-001"
+
+  - key: N93
+    type: eskalasyon
+    title: "Bu bir kimlik sorunu — ACC-001 ile devam et"
+    body_md: |
+      Sürekli parola sorulması ya da reddedilmesi bir posta arızası değil,
+      kimlik doğrulama arızasıdır.
+
+      Bu runbook'u kapat ve **ACC-001 Hesap kilitli veya parola kabul
+      edilmiyor** ile devam et. Outlook'ta kimlik bilgisi kaydetmeye çalışmak
+      hesabı kilitleyebilir.
+    escalate_to: "ACC-001"
+
+  - key: N94
+    type: eskalasyon
+    title: "Posta ekibine eskale et — teslim hatası (NDR)"
+    body_md: |
+      Mesaj gönderiliyor ama karşı taraftan hata bildirimi dönüyor. Bu istemci
+      sorunu değildir.
+
+      NDR'nin **tam metnini ve hata kodunu** özete ekle — kod olmadan posta
+      ekibi hiçbir şey yapamaz.
+    escalate_to: "L2-Posta"
+
+related: [ACC-001, NET-001]

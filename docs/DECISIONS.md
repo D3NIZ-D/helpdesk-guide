@@ -201,6 +201,63 @@ on its own does not prevent it.
 
 ---
 
+## 10a. Tier priority is a tie-breaker, not a score term
+
+**Design (§22.9):** "on an equal score, T1 comes first -- a tree guides
+further than a card does."
+
+**Built first:** a flat `+0.03` added to every runbook's score.
+
+**Built now:** tier is absent from the score and appears only in the sort
+key, after the score itself.
+
+**Why:** a bonus large enough to change an outcome is also large enough to
+change the *wrong* outcome. Adding six runbooks exposed it: for the query
+"169.254 ip adresi alıyor", the reference card scored BM25 0.88 against the
+general network runbook's 0.81 -- and lost, because +0.03 outweighed the
+0.07 relevance gap. The design says "on an equal score", and a sort
+tie-breaker is literally that.
+
+---
+
+## 10b. Synonym expansion contributes a concept, not a synonym storm
+
+**Built first:** each query token expanded to its canonical concept *and
+every synonym of it*, all OR-ed into the FTS query.
+
+**Built now:** each token contributes at most two terms -- itself and its
+concept -- and the compiler writes each record's canonical concepts into
+the index.
+
+**Why:** FTS terms are OR-ed, so one word like "ekran" was adding eight
+terms, and BM25 rewarded whichever record happened to list the most
+synonyms rather than the one the query meant. The query "açılırken mavi
+ekrana düşüyor" ranked the *black screen* runbook first: it lists eight
+display synonyms, so eight terms hit it, while the blue-screen runbook --
+which the intent classifier had correctly identified -- matched one.
+
+Indexing the concept keeps the bridge that expansion was there to build: a
+record whose prose only says "display" is still reachable from "ekran",
+through the shared concept rather than through a fan-out.
+
+---
+
+## 10c. Intent classification requires negation agreement
+
+**Built first:** if the substring pass missed, fall back to matching the
+stem of a trigger's first word against the query stems.
+
+**Built now:** the same fallback, but every word of the trigger must be
+present, and the trigger and the query must agree on negation.
+
+**Why:** Turkish carries negation inside the verb, and the stemmer strips
+it. "çalışmıyor" and "çalışıyor" both stem to "calis", so the phrase "her
+şey ağır çalışıyor" -- a complaint about slowness -- was classified as
+NOT_WORKING, the opposite of what it says. `is_negated` already existed
+for the query; applying it to the trigger too costs one comparison.
+
+---
+
 ## 11. Scope not yet built
 
 Everything below is in the design and is deliberately not in v1.

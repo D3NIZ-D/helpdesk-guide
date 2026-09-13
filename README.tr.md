@@ -44,9 +44,9 @@ $ helpdesk search "monitorum calismiyor"
   stems      : monitor calis
   intent     : NOT_WORKING
 
-  ●●●●○○   75%  DSP-001  Monitörde görüntü yok
+  ●●●●○○   61%  DSP-001  Monitörde görüntü yok
           donanim/goruntu · runbook · ✔ doğrulanmış · via alias_key
-  ●●●○○○   42%  PWR-001  Bilgisayar hiç açılmıyor
+  ●●○○○○   37%  PWR-001  Bilgisayar hiç açılmıyor
           donanim/guc · runbook · ✔ doğrulanmış · via fts
 
 $ helpdesk run DSP-001
@@ -118,6 +118,9 @@ Her arıza karar ağacı hak etmez. Ağaç **belirsizliği daraltmak** için var
 | **`guide`** | Doğrusal kontrol listesi, 3–8 adım | 800–1.500 | 20–40 dk |
 | **`reference`** | Belirti → nedenler → çözüm, tek kart | 3.000–4.000 | 5–15 dk |
 
+Depoda 13 karar ağacı, 3 kontrol listesi ve 4 referans kartı var — tasarım
+dokümanındaki 20 kayıtlık v1 hedefi.
+
 Üçü de aynı arama havuzunu ve aynı şemayı paylaşır; yalnız yürütme biçimi
 farklıdır. Kartlar `related_runbook` ile ağaçlara bağlanır, böylece 5.000 kayıt
 dağınık bir yığın değil, 150 ağacın etrafında örülmüş bir ağ olur.
@@ -163,7 +166,7 @@ Projenin en zor ve en kritik parçası.
   ├─ ASCII katlama          ş→s, ğ→g, ı→i, ö→o, ü→u, ç→c
   ├─ Tokenizasyon + stopword
   ├─ Ek soyma               monitorum → monitor,  calismiyor → calis
-  ├─ Sözlük genişletme      monitor → {ekran, display, lcd, panel}
+  ├─ Kavram eşleme          ekran → monitor  (kavram, her eşanlam değil)
   └─ Niyet çıkarımı         NOT_WORKING, NO_DISPLAY
                             ↓
                 FTS5:  "monitor"* OR "ekran"* OR "calis"* ...
@@ -173,7 +176,8 @@ Projenin en zor ve en kritik parçası.
 
 **Gövdeleme doğru değil, tutarlı.** Sorgu ve alias aynı hattan geçiyor, dolayısıyla
 üretilen token gerçek bir Türkçe kök olmasa bile iki taraf aynı yere düşüyor.
-`dosya` → `dosy` dilbilimsel olarak yanlış ve tamamen zararsız.
+`dosya` → `dos` dilbilimsel olarak yanlış ve tamamen zararsız; önemli olan
+`dosyası`nın da aynı yere düşmesi.
 
 **Her FTS terimi bir önek sorgusu.** İndeks tarafında kalan ekler yine eşleşiyor;
 bu yüzden fazla kesmek güvenli, az kesmek ölümcül. 200 satırlık bir kural
@@ -183,8 +187,13 @@ Skorlama:
 
 ```
 temel = 0,40·BM25 + 0,25·alias + 0,15·niyet + 0,10·bağlam + 0,10·geçmiş
-skor  = temel × doğrulama_ağırlığı + katman_önceliği
+skor  = max(temel, alias_tabanı) × doğrulama_ağırlığı
 ```
+
+`alias_tabanı`, küçük korpusta BM25'in IDF terimi çöktüğü için gerekli: tam bir
+alias eşleşmesi orada da kaydı doğrudan açabilsin diye. Katman önceliği formülde
+**yok** — yalnız sıralamada eşitliği bozar, çünkü fark yaratacak kadar büyük bir
+bonus, gerçek bir alaka farkını devirecek kadar da büyüktür.
 
 | Skor | Davranış |
 |---|---|
@@ -200,7 +209,7 @@ kişilerce sıralanmış listesi.**
 
 ```bash
 helpdesk eval
-# 73 queries · Recall@1 97.3% · Recall@3 100.0%
+# 110 queries · Recall@1 94.5% · Recall@3 100.0%
 ```
 
 `tests/golden_queries.yaml` gerçek ifadelerden oluşan bir regresyon setidir ve CI

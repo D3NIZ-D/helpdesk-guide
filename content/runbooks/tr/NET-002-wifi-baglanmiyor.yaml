@@ -1,0 +1,229 @@
+code: NET-002
+tier: runbook
+title: "Wi-Fi bağlanmıyor veya sürekli kopuyor"
+summary: "Kablosuz ağ listede yok, bağlanmıyor ya da bağlandıktan sonra düşüyor."
+category: ag/kablosuz
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [laptop, masaustu]
+
+tags: [wifi, kablosuz, 802-1x, sinyal]
+
+aliases:
+  - { term: "wifi bağlanmıyor",           kind: belirti, weight: 1.0 }
+  - { term: "kablosuz ağa bağlanamıyorum", kind: belirti, weight: 1.0 }
+  - { term: "wifi sürekli kopuyor",       kind: belirti, weight: 1.0 }
+  - { term: "wifi listede görünmüyor",    kind: belirti, weight: 1.0 }
+  - { term: "kablosuz ağ bulunamıyor",    kind: belirti, weight: 1.0 }
+  - { term: "wifi bağlantısı düşüyor",    kind: belirti, weight: 1.0 }
+  - { term: "wifi simgesi yok",           kind: belirti, weight: 0.9 }
+  - { term: "wifi cannot connect",        kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Belirti tam olarak hangisi?"
+    body_md: |
+      Bu üç belirti üç ayrı arızadır ve ortak adımları yoktur. Kullanıcıya
+      ağ listesini açtır ve **ne gördüğünü** anlattır.
+    est_seconds: 60
+    edges:
+      - { label: "Ağ listesi boş / kablosuz simgesi yok",   to: N20 }
+      - { label: "Ağ görünüyor ama bağlanmıyor",            to: N30 }
+      - { label: "Bağlanıyor ama sürekli kopuyor",          to: N50 }
+      - { label: "Bağlı görünüyor ama internet yok",        to: N90 }
+
+  # ── Adaptör görünmüyor kolu ───────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Kablosuz adaptörü ve fiziksel anahtarları kontrol et"
+    body_md: |
+      Ucuzdan pahalıya sırayla:
+
+      1. **Uçak Modu** açık mı? Görev çubuğundan kapat.
+      2. Laptopta **fiziksel kablosuz anahtarı** veya `Fn + F2` benzeri bir
+         tuş kombinasyonu var mı? Kullanıcı farkında olmadan basmış olabilir.
+      3. `Aygıt Yöneticisi → Ağ bağdaştırıcıları` → kablosuz adaptör listede mi,
+         sarı ünlem var mı?
+      4. Adaptörü **devre dışı bırak, tekrar etkinleştir**.
+    verify_text: "Ağ listesinde kablosuz ağlar göründü mü?"
+    est_seconds: 300
+    edges:
+      - { label: "Ağlar göründü",                           to: N30 }
+      - { label: "Sadece bazı ağlar eksik (5 GHz yok)",     to: N26 }
+      - { label: "Adaptör hiç yok veya ünlem işaretli",     to: N25 }
+
+  - key: N25
+    type: talimat
+    title: "Kablosuz sürücüsünü temiz kur"
+    body_md: |
+      Sürücüyü indirmek için ağ gerekir — önce **kablolu bağlantı** ya da
+      telefon üzerinden USB bağlantı kur, sonra başla.
+
+      1. Sürücüyü üreticinin sitesinden, cihazın tam model numarasıyla indir.
+      2. `Aygıt Yöneticisi` → adaptör → **Aygıtı kaldır**, "sürücü yazılımını
+         da sil" kutusunu işaretle.
+      3. İndirdiğin sürücüyü kur, yeniden başlat.
+    verify_text: "Adaptör sağlıklı görünüyor ve ağları listeliyor mu?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Kaldırma sonrası adaptör geri gelmezse: `Aygıt Yöneticisi → İşlem →
+      Donanım değişikliklerini tara`. Yeni sürücü kararsızsa adaptör
+      özelliklerinden **Sürücüyü Geri Al**.
+
+      Sürücüyü kaldırmadan önce indirmiş olduğundan emin ol; aksi halde
+      cihazın ağa çıkacak hiçbir yolu kalmaz.
+    est_seconds: 1800
+    edges:
+      - { label: "Adaptör geri geldi ve bağlandı",          to: N27 }
+      - { label: "Adaptör hâlâ yok",                        to: N91 }
+
+  - key: N26
+    type: cozum
+    title: "Çözüldü — adaptör 5 GHz bandını desteklemiyor"
+    root_cause: WIFI_BAND_UYUMSUZ
+    closure_note: "Cihaz yalnız 2,4 GHz destekliyor; aranan ağ 5 GHz yayında."
+    followup_md: |
+      Kullanıcıya hangi ağ adına bağlanması gerektiğini söyle. Eski cihazlarda
+      bu tekrar edecek; envanterde bu modelleri işaretlemek çağrı azaltır.
+
+  - key: N27
+    type: cozum
+    title: "Çözüldü — kablosuz sürücüsü bozuktu"
+    root_cause: WIFI_SURUCU
+    closure_note: "Adaptör sürücüsü yeniden kurulunca kablosuz geri geldi."
+
+  # ── Bağlanmıyor kolu ──────────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Kayıtlı profili unut ve yeniden bağlan"
+    body_md: |
+      1. Ağ listesinde ilgili ağa sağ tıkla → **Unut**.
+      2. Yeniden bağlan ve parolayı **elle gir**. Kopyala-yapıştır yapma;
+         sondaki görünmez boşluk klasik bir zaman kaybıdır.
+      3. Kurumsal ağda sertifika uyarısı çıkarsa **bağlan** de.
+
+      Kurumsal kablosuz için kimlik bilgisi gerekiyorsa parola kasasındaki
+      ilgili kayda bak; bilete veya sohbete yazma.
+    verify_text: "Ağa bağlandı mı, bağlanamadıysa ekranda hangi hata var?"
+    est_seconds: 300
+    edges:
+      - { label: "Bağlandı",                                to: N31 }
+      - { label: "Kimlik doğrulama / sertifika hatası",     to: N40 }
+      - { label: "Hata vermiyor ama bağlanmıyor",           to: N50 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — kayıtlı kablosuz profili bozuktu"
+    root_cause: WIFI_PROFIL
+    closure_note: "Eski profil bozulmuştu ya da ağ parolası değişmişti."
+
+  - key: N40
+    type: talimat
+    title: "Kurumsal ağ kimlik doğrulamasını düzelt"
+    body_md: |
+      Kurumsal kablosuz (802.1X) üç şeyden birine takılır: sertifika, kimlik
+      biçimi, veya ilke.
+
+      1. Kullanıcı adının doğru biçimde girildiğini doğrula
+         (`DOMAIN\kullanici` mı, `kullanici@sirket.com` mı).
+      2. `certlm.msc` → cihaz sertifikasının **süresi dolmuş mu** bak.
+      3. Adaptör özelliklerinde doğrulama yöntemi kurum standardıyla uyuşuyor mu?
+      4. Cihaz etki alanına kayıtlı mı — yeni kurulmuş cihazlarda sık atlanır.
+    verify_text: "Kimlik doğrulaması geçti ve ağa bağlandı mı?"
+    risk: orta
+    requires_admin: true
+    est_seconds: 900
+    edges:
+      - { label: "Bağlandı",                                to: N41 }
+      - { label: "Sertifika süresi dolmuş, yenilenemedi",   to: N92 }
+      - { label: "Hâlâ reddediliyor",                       to: N92 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — kurumsal ağ kimlik doğrulaması"
+    root_cause: WIFI_802_1X
+    closure_note: "Kimlik biçimi veya sertifika sorunu giderildi."
+
+  # ── Kopma kolu ────────────────────────────────────────────────────
+  - key: N50
+    type: talimat
+    title: "Kopma nedenini daralt"
+    body_md: |
+      Kopmanın **deseni** sebebi söyler. Kullanıcıya sor: her yerde mi, belli
+      bir odada mı, uykudan sonra mı?
+
+      1. Adaptör özellikleri → **Güç Yönetimi** → "Güç tasarrufu için bu aygıtı
+         kapat" işaretini kaldır. Uykudan sonra kopan vakaların sebebi budur.
+      2. Sinyal gücünü kopma anında ölçtür (çubuk sayısı yeterli bir gösterge).
+      3. Aynı konumda **başka bir cihaz** da kopuyor mu? Kopuyorsa sorun
+         cihazda değil, kapsamadadır.
+      4. Cihaz sürekli ağlar arasında geçiş yapıyor mu (misafir ağı gibi)?
+         Gereksiz ağların otomatik bağlanmasını kapat.
+    verify_text: "Aynı koşullarda kopmalar durdu mu?"
+    risk: dusuk
+    requires_admin: true
+    est_seconds: 900
+    edges:
+      - { label: "Kopmalar durdu",                          to: N51 }
+      - { label: "Yalnız belirli bir konumda kopuyor",      to: N52 }
+      - { label: "Her yerde, her cihazda kopuyor",          to: N92 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — adaptör güç yönetimi veya ağ önceliği"
+    root_cause: WIFI_GUC_YONETIMI
+    closure_note: "Windows adaptörü uykuya alıyor ya da yanlış ağa geçiyordu."
+
+  - key: N52
+    type: cozum
+    title: "Çözüldü — kapsama sorunu, cihaz kaynaklı değil"
+    root_cause: WIFI_KAPSAMA
+    closure_note: "Belirli bir alanda kablosuz kapsaması yetersiz."
+    followup_md: |
+      Bunu bir cihaz vakası olarak kapatma. Konumu ve etkilenen kullanıcı
+      sayısını ağ ekibine bildir — kapsama boşluğu herkesi etkiliyor ve
+      tek tek çağrı olarak gelmeye devam eder.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "Bu bir Wi-Fi sorunu değil — NET-001 ile devam et"
+    body_md: |
+      Kablosuz bağlantı kurulmuş ama internet yok. Sorun kablosuz katmanında
+      değil, IP/DNS veya yukarısında.
+
+      Bu runbook'u kapat ve **NET-001 İnternete bağlanamıyor** ile devam et.
+    escalate_to: "NET-001"
+
+  - key: N91
+    type: eskalasyon
+    title: "Donanım servisine eskale et"
+    body_md: |
+      Kablosuz adaptör işletim sistemine hiç görünmüyor. Donanım arızası
+      olasılığı yüksek. Cihaz modelini ve denenen sürücü sürümünü özete ekle.
+    escalate_to: "L2-Donanim"
+
+  - key: N92
+    type: eskalasyon
+    title: "Ağ ekibine eskale et"
+    body_md: |
+      Cihaz tarafında yapılabilecekler tükendi veya belirti birden çok cihazı
+      etkiliyor.
+
+      Özete mutlaka ekle: **ağ adı, konum (kat/blok), etkilenen kullanıcı
+      sayısı** ve varsa tam hata mesajı. Üçü olmadan ağ ekibi tekrar soracak.
+    escalate_to: "L2-Ag"
+
+related: [NET-001, VPN-001]

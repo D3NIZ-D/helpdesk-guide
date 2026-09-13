@@ -56,3 +56,6 @@ steps:
       Disk yeniden dolacaksa asıl çözüm budur; her ay temizlik yapmak
       çözüm değil, bakım borcudur.
     est_seconds: 300
+
+# Disk dolmasi genel yavasligin sebeplerinden biri; kart cozmezse agaca atla.
+related_runbook: PRF-001

@@ -192,7 +192,11 @@ class Matcher:
         for candidate in scored.values():
             self._finalise(candidate, query, context or {}, history, scopes)
 
-        candidates = sorted(scored.values(), key=lambda c: (-c.score, c.code))[:limit]
+        candidates = sorted(
+            scored.values(),
+            # Score first; tier only separates records the score cannot.
+            key=lambda c: (-c.score, -TIER_PRIORITY.get(c.tier, 0.0), c.code),
+        )[:limit]
         action, clarification = self._decide(candidates, query)
         return MatchResult(
             query=query, candidates=candidates, action=action, clarification=clarification
@@ -411,7 +415,13 @@ class Matcher:
         base = max(base, floor)
 
         weight = VERIFICATION_WEIGHT.get(candidate.verification, 0.5)
-        candidate.score = base * weight + TIER_PRIORITY.get(candidate.tier, 0.0)
+        # Tier is deliberately NOT added to the score. Section 22.9 asks for
+        # a tree to win "on an equal score", and a bonus large enough to
+        # matter is also large enough to overturn a real relevance
+        # difference -- it was pushing a runbook above a reference card that
+        # BM25 scored higher. It belongs in the sort key, where it breaks
+        # ties and nothing else.
+        candidate.score = base * weight
         candidate.signals["verification_weight"] = weight
         candidate.signals["floor"] = floor
 

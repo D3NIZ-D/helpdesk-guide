@@ -170,3 +170,55 @@ class TestKnowledgeGaps:
         )
         row = fresh_db.query_one("SELECT query_raw FROM knowledge_gaps")
         assert "Ahmet" not in row["query_raw"]
+
+
+class TestTierIsOnlyATieBreaker:
+    """Section 22.9 asks for a tree to win *on an equal score*."""
+
+    def test_tier_is_not_added_to_the_score(self, matcher):
+        # A tier bonus large enough to matter is also large enough to
+        # overturn a genuine relevance difference; it was ranking a
+        # runbook above a reference card that BM25 scored higher.
+        for query in ["0x0000007B", "ekran siyah", "yazıcı çevrimdışı görünüyor"]:
+            for candidate in matcher.search(query, limit=5).candidates:
+                signals = candidate.signals
+                base = (
+                    0.40 * signals["bm25"]
+                    + 0.25 * signals["alias_exact"]
+                    + 0.15 * signals["intent"]
+                    + 0.10 * signals["context"]
+                    + 0.10 * signals["history"]
+                )
+                expected = max(base, signals["floor"]) * signals["verification_weight"]
+                assert candidate.score == pytest.approx(expected, abs=1e-9), (
+                    query, candidate.code
+                )
+
+    def test_a_reference_card_can_outrank_a_runbook_on_relevance(self, matcher):
+        # The error code belongs to the card, and the card must win.
+        assert matcher.search("0x0000007B").best.tier == "reference"
+
+
+class TestNewRunbooksAreReachable:
+    @pytest.mark.parametrize(
+        "query,expected",
+        [
+            ("bilgisayar çok yavaş", "PRF-001"),
+            ("outlook açılmıyor", "APP-001"),
+            ("wifi bağlanmıyor", "NET-002"),
+            ("vpn bağlanmıyor", "VPN-001"),
+            ("laptop şarj olmuyor", "PWR-002"),
+            ("dosya karantinaya alındı", "SEC-002"),
+        ],
+    )
+    def test_each_new_record_is_the_top_hit_for_its_symptom(self, matcher, query, expected):
+        assert matcher.search(query).best.code == expected
+
+    def test_slowness_does_not_collide_with_power(self, matcher):
+        # "açılmıyor" and "yavaş" share a lot of vocabulary; these two
+        # runbooks must not answer each other's queries.
+        assert matcher.search("bilgisayar hiç açılmıyor").best.code == "PWR-001"
+        assert matcher.search("bilgisayar çok yavaş").best.code == "PRF-001"
+
+    def test_wifi_does_not_swallow_the_general_network_runbook(self, matcher):
+        assert matcher.search("internete bağlanamıyorum").best.code == "NET-001"

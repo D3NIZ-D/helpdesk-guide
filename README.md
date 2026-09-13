@@ -46,9 +46,9 @@ $ helpdesk search "monitorum calismiyor"
   stems      : monitor calis
   intent     : NOT_WORKING
 
-  ●●●●○○   75%  DSP-001  Monitörde görüntü yok
+  ●●●●○○   61%  DSP-001  Monitörde görüntü yok
           donanim/goruntu · runbook · ✔ doğrulanmış · via alias_key
-  ●●●○○○   42%  PWR-001  Bilgisayar hiç açılmıyor
+  ●●○○○○   37%  PWR-001  Bilgisayar hiç açılmıyor
           donanim/guc · runbook · ✔ doğrulanmış · via fts
 
 $ helpdesk run DSP-001
@@ -210,7 +210,7 @@ The hard part, and the reason a generic knowledge base search does not work here
   ├─ ASCII folding                 ş→s, ğ→g, ı→i, ö→o, ü→u, ç→c
   ├─ Tokenise + stopword removal
   ├─ Suffix stripping              monitorum → monitor,  calismiyor → calis
-  ├─ Lexicon expansion             monitor → {ekran, display, lcd, panel}
+  ├─ Concept mapping               ekran → monitor  (the concept, not every synonym)
   └─ Intent inference              NOT_WORKING, NO_DISPLAY
                                    ↓
                     FTS5:  "monitor"* OR "ekran"* OR "calis"* ...
@@ -220,8 +220,8 @@ Two decisions do most of the work:
 
 **The stemmer is consistent, not correct.** Queries and aliases go through the
 same pipeline, so both sides collapse onto the same token even when that token is
-not a real Turkish root. `dosya` → `dosy` is linguistically wrong and completely
-harmless.
+not a real Turkish root. `dosya` → `dos` is linguistically wrong and completely
+harmless; what matters is that `dosyası` lands there too.
 
 **Every FTS term is a prefix query.** Residual suffixes on the indexed side still
 match, which means over-stripping is safe and under-stripping is not. This is what
@@ -231,8 +231,14 @@ Scoring (`src/helpdesk/core/matcher.py`):
 
 ```
 base  = 0.40·BM25 + 0.25·alias_exact + 0.15·intent + 0.10·context + 0.10·history
-score = base × verification_weight + tier_priority
+score = max(base, alias_floor) × verification_weight
 ```
+
+`alias_floor` is what makes an exact alias match open the record even on a
+small corpus, where BM25's IDF term collapses and every score looks equally
+mediocre. Tier is deliberately **not** in the formula: it breaks ties in the
+sort order and nothing else, because a bonus big enough to matter is also big
+enough to overturn a real relevance difference.
 
 | Score | Behaviour |
 |---|---|
@@ -251,7 +257,7 @@ regression suite of real phrasings:
 
 ```bash
 helpdesk eval
-# 73 queries · Recall@1 97.3% · Recall@3 100.0%
+# 110 queries · Recall@1 94.5% · Recall@3 100.0%
 ```
 
 CI runs it on every content change, so adding a runbook that breaks an older

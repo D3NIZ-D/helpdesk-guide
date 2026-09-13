@@ -110,3 +110,55 @@
 - { query: "harddiskte yer kalmadi uyarisi aliyorum", expect: PRF-002, max_rank: 2 }
 - { query: "teamste beni duymuyorlar",          expect: APP-002, max_rank: 2 }
 - { query: "paylasim klasorune erisemiyorum",   expect: NET-014, max_rank: 3 }
+
+# ── PRF-001 Bilgisayar çok yavaş / donuyor ───────────────────────────
+- { query: "bilgisayar çok yavaş",              expect: PRF-001, max_rank: 1 }
+- { query: "bilgisayarim yavasladi",            expect: PRF-001, max_rank: 1 }
+- { query: "sürekli donuyor",                   expect: PRF-001, max_rank: 1 }
+- { query: "uygulamalar gec aciliyor",          expect: PRF-001, max_rank: 1 }
+
+# ── APP-001 Outlook açılmıyor / posta gönderilemiyor ─────────────────
+- { query: "outlook açılmıyor",                 expect: APP-001, max_rank: 1 }
+- { query: "mail gonderemiyorum",               expect: APP-001, max_rank: 1 }
+- { query: "e-posta gelmiyor",                  expect: APP-001, max_rank: 1 }
+- { query: "outlook donuyor",                   expect: APP-001, max_rank: 1 }
+
+# ── NET-002 Wi-Fi bağlanmıyor / kopuyor ──────────────────────────────
+- { query: "wifi bağlanmıyor",                  expect: NET-002, max_rank: 1 }
+- { query: "kablosuz aga baglanamiyorum",       expect: NET-002, max_rank: 1 }
+- { query: "wifi sürekli kopuyor",              expect: NET-002, max_rank: 1 }
+- { query: "wifi listede gorunmuyor",           expect: NET-002, max_rank: 1 }
+
+# ── VPN-001 VPN bağlanmıyor / kopuyor ────────────────────────────────
+- { query: "vpn bağlanmıyor",                   expect: VPN-001, max_rank: 1 }
+- { query: "vpn kopuyor",                       expect: VPN-001, max_rank: 1 }
+- { query: "uzaktan baglanamiyorum",            expect: VPN-001, max_rank: 1 }
+- { query: "vpn bağlı ama erişemiyorum",        expect: VPN-001, max_rank: 1 }
+
+# ── PWR-002 Laptop şarj olmuyor ──────────────────────────────────────
+- { query: "laptop şarj olmuyor",               expect: PWR-002, max_rank: 1 }
+- { query: "sarj almiyor",                      expect: PWR-002, max_rank: 1 }
+- { query: "takılı şarj edilmiyor",             expect: PWR-002, max_rank: 1 }
+- { query: "pil dolmuyor",                      expect: PWR-002, max_rank: 1 }
+
+# ── SEC-002 Antivirüs uyarısı / karantina ────────────────────────────
+- { query: "dosya karantinaya alındı",          expect: SEC-002, max_rank: 1 }
+- { query: "antivirus uyari verdi",             expect: SEC-002, max_rank: 1 }
+- { query: "virüs bulundu",                     expect: SEC-002, max_rank: 1 }
+- { query: "dosyalarım şifrelendi",             expect: SEC-002, max_rank: 1 }
+
+# ── Hard cases for the new records ───────────────────────────────────
+# Again: paraphrases, not aliases. These are what make the number move.
+- { query: "makinem asiri agir calisiyor",                expect: PRF-001, max_rank: 2 }
+- { query: "her islem beni bekletiyor cok gec tepki veriyor", expect: PRF-001, max_rank: 2 }
+- { query: "bilgisayar kasiyor surekli takiliyor",        expect: PRF-001, max_rank: 2 }
+- { query: "postalarim gelmiyor outlookta bir sey var",   expect: APP-001, max_rank: 2 }
+- { query: "gonderdigim mailler giden kutusunda duruyor", expect: APP-001, max_rank: 2 }
+- { query: "kablosuz simgesinde unlem var baglanamiyorum", expect: NET-002, max_rank: 3 }
+- { query: "ofiste wifi var evde yok",                    expect: NET-002, max_rank: 3 }
+- { query: "evden calisirken ic sistemlere giremiyorum",  expect: VPN-001, max_rank: 3 }
+- { query: "tunel kuruluyor sonra dusuyor",               expect: VPN-001, max_rank: 3 }
+- { query: "fise takili ama yuzde artmiyor",              expect: PWR-002, max_rank: 2 }
+- { query: "bataryasi bir turlu dolmuyor dizustunun",     expect: PWR-002, max_rank: 2 }
+- { query: "defender bir dosyayi engelledi is duruyor",   expect: SEC-002, max_rank: 2 }
+- { query: "ekranima fidye notu cikti",                   expect: SEC-002, max_rank: 2 }

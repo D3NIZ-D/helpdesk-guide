@@ -1,0 +1,294 @@
+# ⚠ Bu runbook'un varsayılan çıktısı "temizle ve devam et" DEĞİLDİR.
+#
+# Bir antivirüs uyarısı iki şeyden biridir: gerçek bir bulaşma ya da yanlış
+# pozitif. İkisini L1 ayıramaz, ve yanlış tarafa düşmenin maliyeti simetrik
+# değildir — yanlış pozitifi eskale etmek yarım saat kaybettirir, gerçek
+# bulaşmayı "temizledim" diye kapatmak bir olayı gizler.
+#
+# Bu ağaçta hiçbir dal teknisyeni karantinadan dosya geri yüklemeye,
+# taramayı devre dışı bırakmaya veya istisna tanımlamaya tek başına
+# yetkilendirmez. Bu kararlar güvenlik ekibinindir.
+
+code: SEC-002
+tier: runbook
+title: "Antivirüs uyarısı veya dosya karantinaya alındı"
+summary: "Uç nokta koruması bir tehdit bildirdi ya da bir dosyayı karantinaya aldı."
+category: guvenlik/zararli
+severity: kritik
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 90
+
+scope:
+  os: [windows, macos]
+  asset: [masaustu, laptop]
+
+tags: [guvenlik, antivirus, karantina, zararli, fidye]
+
+aliases:
+  - { term: "antivirüs uyarı verdi",      kind: belirti, weight: 1.0 }
+  - { term: "dosya karantinaya alındı",   kind: belirti, weight: 1.0 }
+  - { term: "virüs bulundu",              kind: belirti, weight: 1.0 }
+  - { term: "zararlı yazılım tespit edildi", kind: belirti, weight: 1.0 }
+  - { term: "defender uyarısı çıkıyor",   kind: belirti, weight: 1.0 }
+  - { term: "tehdit bulundu uyarısı",     kind: belirti, weight: 1.0 }
+  - { term: "dosyalarım şifrelendi",      kind: belirti, weight: 1.4 }
+  - { term: "fidye notu çıktı",           kind: belirti, weight: 1.4 }
+  - { term: "threat detected",            kind: hata_kodu, weight: 1.0 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Uyarı ne diyor ve kullanıcı bundan sonra ne yaptı?"
+    body_md: |
+      **Önce bunu sor, hiçbir şey yapmadan.**
+
+      Kullanıcıdan uyarıyı **kelimesi kelimesine** okumasını iste; mümkünse
+      telefonla fotoğraf çektir. Uyarıyı kapatmışsa ne yazdığını hatırlamaya
+      çalışsın.
+
+      Suçlayıcı olma. Utanan kullanıcı gerçeği söylemez, ve bu vaka tipinde
+      gecikme asıl zararı yapar.
+    est_seconds: 120
+    edges:
+      - { label: "Bir dosya karantinaya alındı, iş duruyor",  to: N20 }
+      - { label: "Uyarı tekrar tekrar çıkıyor / temizlenemedi", to: N90 }
+      - { label: "Dosyalar şifrelenmiş, fidye notu var",      to: N95 }
+      - { label: "Kullanıcı uyarıyı kapatmış, şu an bir şey yok", to: N30 }
+
+  # ── Karantina kolu ────────────────────────────────────────────────
+  - key: N20
+    type: soru
+    title: "Karantinaya alınan dosya nereden geldi?"
+    body_md: |
+      Kaynağı, dosyanın ne olduğundan daha çok şey söyler.
+
+      Kullanıcıya sor: bu dosyayı **nereden aldın**? Ne zamandır kullanıyorsun?
+      Başkaları da kullanıyor mu?
+
+      **Dosyayı açma, çalıştırma veya kopyalama.** Karantinadaki dosyaya
+      dokunmak gerekmiyor; adı ve yolu yeterli.
+    est_seconds: 180
+    edges:
+      - { label: "Kurumun dağıttığı bilinen bir uygulama/araç", to: N21 }
+      - { label: "İnternetten indirilmiş, kaynağı belirsiz",   to: N90 }
+      - { label: "E-posta ekiyle veya bağlantıdan geldi",      to: N90 }
+      - { label: "Kullanıcı bilmiyor / hatırlamıyor",          to: N90 }
+
+  - key: N21
+    type: talimat
+    title: "Yanlış pozitif olabileceğini güvenlik ekibine bildir"
+    body_md: |
+      Bu muhtemelen yanlış pozitif — ama "muhtemelen" yetmez, ve kararı
+      L1 vermez.
+
+      Sen şunları topla ve **güvenlik ekibine ilet**:
+
+      1. Tehdit adı (uyarıda yazan tam ad) ve algılama zamanı.
+      2. Dosyanın tam yolu ve adı.
+      3. Dosyanın hangi uygulamaya ait olduğu ve kim tarafından dağıtıldığı.
+      4. Aynı algılamanın **başka cihazlarda** da olup olmadığı — varsa bu
+         güçlü bir yanlış pozitif göstergesidir, ama aynı zamanda yaygın bir
+         bulaşma da olabilir.
+
+      **Yapma:** karantinadan geri yükleme, istisna tanımlama, taramayı
+      kapatma. Üçü de güvenlik ekibinin kararıdır.
+    verify_text: "Güvenlik ekibi inceledi ve yanlış pozitif olduğunu yazılı olarak onayladı mı?"
+    est_seconds: 900
+    edges:
+      - { label: "Onaylandı ve istisna güvenlik ekibince tanımlandı", to: N22 }
+      - { label: "Onaylamadı veya şüpheli buldu",           to: N90 }
+      - { label: "Kullanıcı beklemek istemiyor, baskı yapıyor", to: N91 }
+
+  - key: N22
+    type: cozum
+    title: "Kapatıldı — yanlış pozitif, güvenlik ekibi onayladı"
+    root_cause: YANLIS_POZITIF
+    closure_note: "Algılama yanlış pozitifti; istisna güvenlik ekibi tarafından tanımlandı."
+    followup_md: |
+      Aynı dosya birden çok cihazda karantinaya alınıyorsa bunu tek tek
+      çözmeyi bırak: yazılım envanterine ve güvenlik ekibine toplu istisna
+      talebi olarak taşı.
+
+      İstisnayı kimin, ne zaman, hangi gerekçeyle tanımladığını bilete yaz.
+      Altı ay sonra "bu istisna neden var?" sorusunun cevabı bu olacak.
+
+  # ── Uyarı kapatılmış kolu ─────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Cihazın gerçek durumunu tespit et"
+    body_md: |
+      Uyarının kapatılmış olması geçtiği anlamına gelmez. Kanıta bak,
+      kullanıcının hafızasına değil.
+
+      1. Antivirüs konsolunda/uygulamasında **algılama geçmişini** aç. Ne
+         algılandı, ne yapıldı (engellendi / karantinaya alındı / eylem yok)?
+      2. "Eylem yok" veya "başarısız" görünen bir kayıt varsa tehdit hâlâ
+         cihazdadır.
+      3. Tam sistem taraması başlat ve bitmesini bekle.
+      4. Koruma yazılımının **güncel ve etkin** olduğunu doğrula; kapalıysa
+         bunu bir bulgu olarak not al.
+    verify_text: "Algılama geçmişinde ne var ve tam tarama ne buldu?"
+    risk: orta
+    est_seconds: 1800
+    edges:
+      - { label: "Tarama temiz, geçmişte tek bir engellenmiş kayıt var", to: N31 }
+      - { label: "Tarama bir şey buldu",                    to: N90 }
+      - { label: "Koruma kapalıydı veya güncel değildi",    to: N32 }
+
+  - key: N31
+    type: cozum
+    title: "Kapatıldı — tehdit engellenmiş, cihaz temiz"
+    root_cause: TEHDIT_ENGELLENDI
+    closure_note: "Koruma yazılımı tehdidi erişim anında engellemiş; sonrasında bulgu yok."
+    followup_md: |
+      Bu bir başarı hikâyesidir ve öyle anlatılmalı: koruma çalıştı.
+      Kullanıcıya neyin engellendiğini ve nereden geldiğini söyle —
+      aynı yerden tekrar indirmesin.
+
+      Olayı yine de güvenlik ekibinin kayıtlarına düşür; tek cihazdaki tek
+      algılama, bir kampanyanın ilk işareti olabilir.
+
+  - key: N32
+    type: talimat
+    title: "Korumayı geri getir ve nedenini araştır"
+    body_md: |
+      Kapalı bir uç nokta koruması, tek başına bir bulgudur: ya bir ilke
+      uygulanmamış ya da bir şey onu kapatmıştır. İkincisi ciddidir.
+
+      1. Korumayı etkinleştir ve imzaları güncelle.
+      2. **Ne zaman ve nasıl kapandığını** araştır: olay günlüğüne ve
+         antivirüs kendi günlüğüne bak.
+      3. Kullanıcı kendisi kapattıysa nedenini sor — genelde "yavaşlatıyordu"
+         olur ve bu ayrı bir performans vakasıdır.
+      4. Kapanma açıklanamıyorsa bunu bir olay olarak ele al.
+    verify_text: "Koruma etkin ve güncel mi, kapanma nedeni açıklanabiliyor mu?"
+    risk: orta
+    requires_admin: true
+    est_seconds: 1200
+    edges:
+      - { label: "Kullanıcı kapatmış, geri açıldı, tarama temiz", to: N33 }
+      - { label: "Kapanma nedeni açıklanamıyor",            to: N90 }
+
+  - key: N33
+    type: cozum
+    title: "Kapatıldı — koruma elle kapatılmıştı, yeniden etkinleştirildi"
+    root_cause: KORUMA_KAPALIYDI
+    closure_note: "Uç nokta koruması kullanıcı tarafından kapatılmıştı; yeniden etkin."
+    followup_md: |
+      Kullanıcı performans gerekçesiyle kapattıysa asıl sorunu çöz —
+      **PRF-001** ile devam et. Çözülmezse kullanıcı korumayı yine kapatacaktır
+      ve bir dahakine bunu söylemeyecektir.
+
+      Korumanın kullanıcı tarafından kapatılabiliyor olması bir yapılandırma
+      bulgusudur; güvenlik ekibine ilet.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "GÜVENLİK OLAYI — güvenlik ekibine eskale et"
+    body_md: |
+      **Bu bir arıza kaydı değil, bir güvenlik olayıdır. Bileti sıraya koyup
+      geçme — güvenlik ekibini bilgilendir.**
+
+      Beklerken yalnız yetkin dahilindekileri yap:
+
+      1. Cihazı **ağdan çıkar** (kabloyu çek veya Wi-Fi'yi kapat).
+      2. Cihazı **kapatma ve yeniden başlatma** — bellekteki kanıt kaybolur.
+      3. Karantinadaki dosyaya dokunma, silme, geri yükleme.
+      4. Kullanıcının hesabının parolasını sıfırlamayı güvenlik ekibiyle
+         değerlendirin — kimlik bilgisi çalınmış olabilir.
+      5. Aynı algılama başka cihazlarda var mı kontrol ettir.
+
+      **Yapma:** dosyayı analiz etmeye çalışma, "temizledim" deyip kapatma,
+      olayı kullanıcıyla aranızda çözmeye çalışma.
+    escalate_to: "Guvenlik-Ekibi"
+    summary_template: |
+      ⚠ GÜVENLİK OLAYI — ZARARLI YAZILIM ALGILAMASI
+
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}} — {{record_title}}
+      Bağlam: {{context}}
+
+      İzlenen adımlar:
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Atlanan: {{skipped_titles}}
+      Süre: {{duration_min}} dk
+
+      L1 tarafından teyit edilmeli:
+        [ ] Cihaz ağdan izole edildi
+        [ ] Cihaz kapatılmadı, yeniden başlatılmadı
+        [ ] Karantinadaki dosyaya dokunulmadı
+        [ ] Aynı algılamanın başka cihazlarda olup olmadığı soruldu
+
+      Gerekli bilgiler: tehdit adı, dosya yolu, algılama zamanı, koruma
+      yazılımının aldığı eylem, kullanıcının dosyayı nereden aldığı,
+      cihaz adı ve kullanıcının son 24 saatteki etkinliği.
+      {{closing}}
+
+  - key: N91
+    type: eskalasyon
+    title: "Kullanıcı baskısını yukarı taşı — tek başına geri yükleme yapma"
+    body_md: |
+      Kullanıcının işi duruyor ve beklemek istemiyor. Bu anlaşılır bir baskı,
+      ama karantinadan geri yükleme kararı senin değil.
+
+      1. Kullanıcıya **neden bekletildiğini** açıkla: dosya zararlıysa geri
+         yüklemek bulaşmayı yeniden başlatır.
+      2. İşin devam etmesi için **alternatif** ara: dosyanın temiz bir kopyası
+         ağ paylaşımında veya kurulum kaynağında olabilir.
+      3. Aciliyeti kendi yöneticine ve güvenlik ekibine bildir; kararı
+         onlar hızlandırsın.
+
+      Baskı altında istisna tanımlamak, bu aracın var olma sebebine aykırıdır.
+    escalate_to: "Guvenlik-Ekibi / Ekip-Yoneticisi"
+
+  - key: N95
+    type: eskalasyon
+    title: "ACİL: FİDYE YAZILIMI ŞÜPHESİ — dakikalar önemli"
+    body_md: |
+      **Dur. Sorun gidermeye çalışma. Güvenlik ekibini şimdi ara.**
+
+      Şifreleme yayılıyor olabilir; her dakika daha fazla dosya demektir.
+
+      Bu sırayla, hemen:
+
+      1. Cihazı **ağdan çıkar** — kabloyu çek, Wi-Fi'yi kapat. Bu ilk iş.
+      2. Cihazı **kapatma.** Bellekteki anahtarlar kurtarmanın tek şansı olabilir.
+      3. **Ağ paylaşımlarını ve yedekleri koru** — kullanıcının eriştiği
+         paylaşımları güvenlik ekibine söyle, erişimi kestirsin.
+      4. Fidye notuna **cevap verme**, hiçbir bağlantıya tıklama.
+      5. Aynı belirti başka kullanıcılarda var mı **hemen** sordur.
+      6. Servis masasına duyuru geçirt: kimse şüpheli dosya açmasın.
+
+      **Yapma:** dosyaları silme, şifre çözme aracı indirme, yedekten geri
+      yüklemeyi kendi başına başlatma, ödeme konusunda kullanıcıyla konuşma.
+    escalate_to: "Guvenlik-Ekibi (ACİL)"
+    summary_template: |
+      🚨 FİDYE YAZILIMI ŞÜPHESİ — ACİL MÜDAHALE
+
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}}
+      Bağlam: {{context}}
+
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Süre: {{duration_min}} dk
+
+      L1 tarafından teyit edilmeli:
+        [ ] Cihaz ağdan izole edildi
+        [ ] Cihaz KAPATILMADI
+        [ ] Kullanıcının eriştiği ağ paylaşımları bildirildi
+        [ ] Başka etkilenen kullanıcı olup olmadığı soruldu
+
+      Gerekli bilgiler: fidye notunun metni, şifrelenmiş dosya uzantısı,
+      ilk fark edilme saati, cihaz adı, kullanıcının eriştiği paylaşımlar,
+      son yedek zamanı.
+      {{closing}}
+
+related: [SEC-001, PRF-001]

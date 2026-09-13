@@ -19,6 +19,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..core.lexicon import Lexicon
 from ..core.normalize import normalize_term
 from ..db.repo import Database
 from .loader import LoadError, load_roots
@@ -100,6 +101,21 @@ def _fts_alias_blob(record: Record) -> str:
     return "\n".join(parts)
 
 
+def _fts_concept_blob(record: Record, lexicon: Lexicon) -> str:
+    """Canonical concepts this record is about.
+
+    Written into the index so that a query can search for one concept term
+    instead of fanning out to every synonym (see ``Lexicon.expand``).  A
+    record whose prose only ever says "display" becomes reachable from
+    "ekran" through the shared concept, without either side paying the
+    BM25 distortion that synonym fan-out causes.
+    """
+    text = " ".join(
+        [record.title, record.summary or "", " ".join(a.term for a in record.aliases)]
+    )
+    return " ".join(lexicon.concepts(text))
+
+
 def compile_content(
     db: Database,
     roots: Sequence[Path],
@@ -118,6 +134,14 @@ def compile_content(
 
     records, load_errors = load_roots(roots)
     result.load_errors = list(load_errors)
+
+    # One lexicon per content language; loaded once and reused.
+    lexicons: dict[str, Lexicon] = {}
+
+    def lexicon_for(lang: str) -> Lexicon:
+        if lang not in lexicons:
+            lexicons[lang] = Lexicon.load(roots, lang=lang)
+        return lexicons[lang]
 
     result.report = validate_records(records, strict_secrets=strict_secrets)
 
@@ -273,7 +297,9 @@ def compile_content(
                 "VALUES(?,?,?,?,?,?)",
                 (
                     f"{record.title}\n{normalize_term(record.title)}",
-                    _fts_alias_blob(record),
+                    _fts_alias_blob(record)
+                    + "\n"
+                    + _fts_concept_blob(record, lexicon_for(record.lang)),
                     record.searchable_body(),
                     " ".join(record.tags),
                     record_id,

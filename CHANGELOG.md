@@ -9,6 +9,39 @@ different rates.
 
 ## [Unreleased]
 
+### Added
+
+- Six runbooks, completing the v1 content target of 20 records
+  (design doc section 20.2): `PRF-001` slow computer, `APP-001` Outlook,
+  `NET-002` Wi-Fi, `VPN-001` VPN, `PWR-002` laptop charging, `SEC-002`
+  antivirus alert and quarantine.
+- 37 more golden queries; the set is now 110.
+- Turkish third-person possessive (`-sı/-si`) suffix stripping, without
+  which "bataryası" never reached "batarya".
+- Canonical concepts are written into the search index at compile time.
+
+### Changed
+
+- **Tier priority is now a sort tie-breaker rather than a score bonus.**
+  A bonus large enough to matter was also large enough to overturn a real
+  relevance difference, ranking a runbook above a reference card that
+  BM25 scored higher. Section 22.9 asks for a tree to win *on an equal
+  score*, and that is now literally what happens.
+- **Synonym expansion no longer fans out.** Each query token contributes
+  itself and its canonical concept, at most two terms. Fanning out to
+  every synonym made one word like "ekran" add eight OR-ed terms that all
+  landed on whichever record listed the most synonyms.
+- **Intent classification now requires negation agreement.** Stemming
+  "çalışmıyor" yields "calis", which is also the stem of "çalışıyor", so
+  "her şey ağır çalışıyor" was being classified as NOT_WORKING — the
+  opposite of what it says.
+
+### Fixed
+
+- Two golden queries tested an unfair expectation rather than the engine
+  and were rewritten; one of them literally said "açılmıyor" while
+  expecting the slowness runbook.
+
 ## [0.1.0] — 2026-09-13
 
 First working release. Engine, both front ends, and the seed content.

@@ -32,6 +32,7 @@ __all__ = [
     "Normalized",
     "ascii_fold",
     "extract_error_codes",
+    "is_negated",
     "normalize_query",
     "normalize_term",
     "stem",
@@ -175,6 +176,10 @@ _SUFFIXES: tuple[str, ...] = (
     "yla", "yle",
     "da", "de", "ta", "te",
     "in", "un", "im", "um",
+    # Third-person possessive. Without it "bataryasi" never reaches
+    # "batarya", so the lexicon entry and every alias built on it stay out
+    # of range -- the query and the content simply never meet.
+    "si", "su",
     # derivation
     "sizlik", "suzluk", "cilik", "culuk",
     "siz", "suz", "lik", "luk", "lig", "lug",
@@ -294,13 +299,18 @@ _NEGATION_WORDS: frozenset[str] = frozenset(
 )
 
 
-def _is_negated(folded_tokens: Sequence[str]) -> bool:
+def is_negated(folded_tokens: Sequence[str]) -> bool:
+    """Whether any token carries a negation marker."""
     for token in folded_tokens:
         if token in _NEGATION_WORDS:
             return True
         if any(marker in token for marker in _NEGATION_MARKERS):
             return True
     return False
+
+
+#: Kept as a private alias so existing call sites read unchanged.
+_is_negated = is_negated
 
 
 # --------------------------------------------------------------------------
