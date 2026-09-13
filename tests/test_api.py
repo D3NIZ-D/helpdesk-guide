@@ -224,3 +224,91 @@ class TestJsonSessionApi:
             json={"label": "Hayır, hiç yanmıyor", "skip": True},
         )
         assert "N10" in response.json()["state"]["skipped"]
+
+
+class TestProvenanceChecks:
+    """The CSRF layer must refuse hostile pages without refusing our own."""
+
+    def test_sec_fetch_site_same_origin_is_allowed(self, client):
+        response = client.post(
+            "/run/DSP-001", data={"q": "x"},
+            headers={"Sec-Fetch-Site": "same-origin", "Origin": "null"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+    def test_sec_fetch_site_cross_site_is_refused(self, client):
+        # It outranks a forged Origin: the browser sets it, not the page.
+        response = client.post(
+            "/run/DSP-001", data={"q": "x"},
+            headers={"Sec-Fetch-Site": "cross-site",
+                     "Origin": "http://127.0.0.1:8756"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 403
+
+    def test_a_bare_null_origin_is_refused(self, client):
+        # A same-origin form POST can carry Origin: null in some clients,
+        # but without Sec-Fetch-Site vouching for it there is nothing to
+        # distinguish that from a sandboxed hostile frame.
+        response = client.post(
+            "/run/DSP-001", data={"q": "x"},
+            headers={"Origin": "null"}, follow_redirects=False,
+        )
+        assert response.status_code == 403
+
+    def test_a_cross_origin_referer_is_refused(self, client):
+        response = client.post(
+            "/run/DSP-001", data={"q": "x"},
+            headers={"Referer": "http://kotu-site.example/sayfa"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 403
+
+    def test_a_headerless_client_is_allowed(self, client):
+        # curl and scripts send neither header; the token already gated them.
+        response = client.post(
+            "/run/DSP-001", data={"q": "x"}, follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+
+class TestLocale:
+    """UI strings must never be shadowed by dict internals."""
+
+    def test_a_key_named_like_a_dict_method_resolves_to_its_translation(self):
+        from helpdesk.api.app import Locale
+
+        t = Locale({"copy": "Kopyala", "get": "Al", "items": "Öğeler"})
+        assert t.copy == "Kopyala"
+        assert t.get == "Al"
+        assert t.items == "Öğeler"
+
+    def test_a_missing_key_is_falsy_so_template_fallbacks_work(self):
+        from helpdesk.api.app import Locale
+
+        t = Locale({})
+        assert (t.nope or "yedek") == "yedek"
+        assert (t["nope"] or "yedek") == "yedek"
+
+    def test_the_copy_button_renders_its_label(self, client):
+        # This rendered as "<built-in method copy of dict object at ...>"
+        # until Locale stopped being a dict.
+        session = client.post("/api/session", json={"code": "DSP-001"}).json()
+        session_id = session["state"]["session_id"]
+        for label in ["Hayır, hiç yanmıyor", "LED yandı, görüntü de geldi"]:
+            client.post(f"/api/session/{session_id}/answer", json={"label": label})
+        page = client.get(f"/s/{session_id}").text
+        assert "Kopyala" in page
+        assert "built-in method" not in page
+
+    def test_both_locales_carry_the_same_keys(self):
+        import json
+
+        from helpdesk.api.app import WEB_DIR
+
+        tr = json.loads((WEB_DIR / "locales" / "tr.json").read_text(encoding="utf-8"))
+        en = json.loads((WEB_DIR / "locales" / "en.json").read_text(encoding="utf-8"))
+        assert set(tr) == set(en), set(tr) ^ set(en)
+        assert all(v.strip() for v in tr.values())
+        assert all(v.strip() for v in en.values())

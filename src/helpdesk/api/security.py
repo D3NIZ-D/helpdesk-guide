@@ -87,18 +87,11 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if not supplied or not hmac.compare_digest(supplied, self.token):
             return self._deny(request, "invalid or missing access token")
 
-        # 2 -- origin, for anything that writes
+        # 2 -- provenance, for anything that writes
         if request.method in STATE_CHANGING_METHODS:
-            origin = request.headers.get("origin")
-            if origin is not None:
-                host = origin.split("//", 1)[-1].lower()
-                if host not in self.allowed_hosts:
-                    return self._deny(request, f"cross-origin request from {origin}")
-            referer = request.headers.get("referer")
-            if origin is None and referer is not None:
-                host = referer.split("//", 1)[-1].split("/", 1)[0].lower()
-                if host not in self.allowed_hosts:
-                    return self._deny(request, f"cross-origin request from {referer}")
+            denial = self._check_provenance(request)
+            if denial is not None:
+                return self._deny(request, denial)
 
         response = await call_next(request)
 
@@ -116,6 +109,47 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         return self._harden(response)
 
     # -- helpers --------------------------------------------------------
+
+    def _check_provenance(self, request: Request) -> str | None:
+        """Decide whether a state-changing request really came from our page.
+
+        Returns a denial reason, or ``None`` to allow.
+
+        ``Sec-Fetch-Site`` is checked first because it is the only header
+        that answers the question directly, and the browser -- not the
+        page -- sets it. ``Origin`` is the fallback for clients that do not
+        send it, with one wrinkle worth spelling out: a same-origin form
+        POST can legitimately carry ``Origin: null`` (an opaque origin,
+        produced by sandboxed contexts and some embedded browsers).
+        Rejecting a bare ``null`` on its own would make the UI unusable in
+        those clients, while accepting it unconditionally would defeat the
+        check -- so it is allowed only when ``Sec-Fetch-Site`` has already
+        vouched for the request, and refused otherwise.
+        """
+        fetch_site = (request.headers.get("sec-fetch-site") or "").lower()
+        if fetch_site:
+            # "none" is a user-initiated navigation (typed URL, bookmark).
+            if fetch_site in {"same-origin", "none"}:
+                return None
+            return f"cross-origin request (Sec-Fetch-Site: {fetch_site})"
+
+        origin = request.headers.get("origin")
+        if origin is not None:
+            host = origin.split("//", 1)[-1].lower()
+            if host not in self.allowed_hosts:
+                return f"cross-origin request from {origin}"
+            return None
+
+        referer = request.headers.get("referer")
+        if referer is not None:
+            host = referer.split("//", 1)[-1].split("/", 1)[0].lower()
+            if host not in self.allowed_hosts:
+                return f"cross-origin request from {referer}"
+
+        # Neither header present: an old browser or a script. The token has
+        # already been verified, and a hostile page cannot read it, so this
+        # is allowed rather than breaking non-browser clients of the API.
+        return None
 
     @staticmethod
     def _harden(response: Response) -> Response:

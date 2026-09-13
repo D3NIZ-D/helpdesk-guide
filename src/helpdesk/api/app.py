@@ -31,14 +31,53 @@ __all__ = ["create_app"]
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
 
-def _load_locale(lang: str) -> dict[str, str]:
+class Locale:
+    """UI strings, addressable as ``t.key_name`` or ``t['key_name']``.
+
+    Deliberately not a dict.  Jinja2 resolves ``t.copy`` by trying
+    ``getattr`` first, so a plain dict hands the template its built-in
+    ``copy`` *method* and the page renders
+    ``<built-in method copy of dict...>`` where the button label should be.
+    The same trap is waiting for ``get``, ``items``, ``keys`` and
+    ``values``.  A plain object has none of those attributes, so every
+    lookup falls through to ``__getattr__`` and reaches the translation.
+
+    A missing key returns an empty string, which is falsy, so the
+    ``{{ t.key or "fallback" }}`` idiom used throughout the templates
+    keeps working.
+    """
+
+    __slots__ = ("_data",)
+
+    def __init__(self, data: dict[str, str]) -> None:
+        object.__setattr__(self, "_data", dict(data))
+
+    def __getattr__(self, name: str) -> str:
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return self._data.get(name, "")
+
+    def __getitem__(self, key: str) -> str:
+        return self._data.get(key, "")
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._data
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def as_dict(self) -> dict[str, str]:
+        return dict(self._data)
+
+
+def _load_locale(lang: str) -> Locale:
     path = WEB_DIR / "locales" / f"{lang}.json"
     if not path.is_file():
         path = WEB_DIR / "locales" / "tr.json"
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return Locale(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, ValueError):
-        return {}
+        return Locale({})
 
 
 def _render_markdown(text: str | None) -> str:
@@ -134,7 +173,7 @@ def create_app(cfg: Settings | None = None, *, token: str | None = None) -> Fast
             return JSONResponse({"error": "not_found"}, status_code=404)
         return templates.TemplateResponse(
             request, "error.html",
-            {"code": 404, "message": app.state.locale.get("not_found", "Bulunamadı")},
+            {"code": 404, "message": app.state.locale["not_found"] or "Bulunamadı"},
             status_code=404,
         )
 
