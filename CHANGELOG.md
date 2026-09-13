@@ -11,6 +11,19 @@ different rates.
 
 ### Added
 
+- The last six runbooks of the design document's v1 list (section 20.2):
+  `DSP-002` display quality, `DOC-001` docking station, `PRN-002` printer
+  setup, `ACC-002` MFA device change, `ACC-003` share permissions,
+  `PER-001` peripherals. 26 records in total.
+- **Alias containment scoring.** An alias whose words all appear in the
+  query now counts, at a lower floor than an exact match. Set-equality
+  matching meant one filler word destroyed the alias entirely: "printer
+  bir türlü basmıyor" contains every word of "yazıcı basmıyor" and was
+  scoring nothing.
+- Tests that assert the security content stays safe: no phishing path
+  where the user interacted resolves instead of escalating, no quarantine
+  release without the security team's approval, and no credential reset
+  without an identity check first.
 - Six runbooks, completing the v1 content target of 20 records
   (design doc section 20.2): `PRF-001` slow computer, `APP-001` Outlook,
   `NET-002` Wi-Fi, `VPN-001` VPN, `PWR-002` laptop charging, `SEC-002`
@@ -31,6 +44,12 @@ different rates.
   itself and its canonical concept, at most two terms. Fanning out to
   every synonym made one word like "ekran" add eight OR-ed terms that all
   landed on whichever record listed the most synonyms.
+- **Body text no longer outranks titles and aliases.** The FTS body
+  column indexes instruction prose, not symptom descriptions, and a long
+  runbook accumulated enough incidental matches on generic verbs to win:
+  the MFA runbook was top hit for a query about a slow computer because
+  one of its escalation notes contains the word "bekletildiğini". Its
+  BM25 weight dropped from 1.0 to 0.3.
 - **Intent classification now requires negation agreement.** Stemming
   "çalışmıyor" yields "calis", which is also the stem of "çalışıyor", so
   "her şey ağır çalışıyor" was being classified as NOT_WORKING — the

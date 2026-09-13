@@ -1,0 +1,229 @@
+code: PER-001
+tier: runbook
+title: "Klavye, mouse veya USB aygıtı tanınmıyor"
+summary: "Bağlanan çevre birimi hiç çalışmıyor, arada kesiliyor ya da işletim sisteminde görünmüyor."
+category: donanim/cevrebirimi
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop, dock]
+
+tags: [usb, klavye, mouse, bluetooth, cevre-birimi]
+
+aliases:
+  - { term: "klavye çalışmıyor",          kind: belirti, weight: 1.0 }
+  - { term: "mouse çalışmıyor",           kind: belirti, weight: 1.0 }
+  - { term: "fare hareket etmiyor",       kind: belirti, weight: 1.0 }
+  - { term: "usb aygıtı tanınmıyor",      kind: hata_kodu, weight: 1.1 }
+  - { term: "usb bellek görünmüyor",      kind: belirti, weight: 1.0 }
+  - { term: "klavyem yazmıyor",           kind: belirti, weight: 1.0 }
+  - { term: "kablosuz mouse bağlanmıyor", kind: belirti, weight: 1.0 }
+  - { term: "usb portları çalışmıyor",    kind: belirti, weight: 1.0 }
+  - { term: "usb device not recognized",  kind: hata_kodu, weight: 1.1 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Hangi aygıt ve nasıl bağlı?"
+    body_md: |
+      Bağlantı biçimi, arızanın nerede olabileceğini belirler. "Hiçbiri
+      çalışmıyor" ile "sadece mouse çalışmıyor" iki ayrı arızadır ve ortak
+      adımları azdır.
+
+      Not: mouse çalışmıyorsa kullanıcıya klavyeyle yol göstermen gerekebilir —
+      `Win` tuşu, ok tuşları ve `Enter` ile devam edilebileceğini söyle.
+    est_seconds: 60
+    edges:
+      - { label: "Kablolu USB aygıt (klavye, mouse, bellek)", to: N20 }
+      - { label: "Kablosuz (alıcılı veya Bluetooth)",         to: N40 }
+      - { label: "Dock veya USB hub üzerinden bağlı",         to: N90 }
+      - { label: "Hiçbir USB aygıtı çalışmıyor",              to: N30 }
+
+  # ── Kablolu aygıt ─────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Portu ve aygıtı çapraz test et"
+    body_md: |
+      İki değişken var — port ve aygıt — ve ikisini aynı anda değiştirirsen
+      hangisinin suçlu olduğunu öğrenemezsin. Teker teker:
+
+      1. Aygıtı **bilgisayarın başka bir portuna** tak. Masaüstünde **arka
+         panel** portlarını tercih et; ön panel portları anakarta uzun bir
+         kabloyla bağlıdır ve daha sık sorun çıkarır.
+      2. Aynı porta **çalıştığı bilinen başka bir aygıt** tak.
+      3. Sorunlu aygıtı **başka bir bilgisayara** tak.
+      4. Kabloyu boydan boya elle geç; konnektöre yakın kısımda kıvrılma var mı bak.
+    verify_text: "Hangi kombinasyonda çalıştı, hangisinde çalışmadı?"
+    est_seconds: 420
+    edges:
+      - { label: "Başka portta çalıştı",                      to: N21 }
+      - { label: "Başka bilgisayarda da çalışmıyor",          to: N22 }
+      - { label: "Aygıt başka PC'de çalışıyor, burada hiçbir portta çalışmıyor", to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — arızalı USB portu"
+    root_cause: USB_PORT_ARIZA
+    closure_note: "Bir port aygıtı beslemiyor veya veri taşımıyor; diğerleri çalışıyor."
+    followup_md: |
+      Arızalı portu **etiketle**. Etiketlenmeyen bir arızalı port, aynı
+      masada üç ay içinde ikinci bir çağrı üretir.
+
+      Masaüstünde ön panel portlarının tamamı ölüyse anakart bağlantısı
+      çıkmış olabilir; donanım kaydı aç.
+
+  - key: N22
+    type: cozum
+    title: "Çözüldü — aygıt arızalı"
+    root_cause: AYGIT_ARIZA
+    closure_note: "Aygıt hiçbir bilgisayarda çalışmıyor."
+    part_required: cevre_birimi_yedek
+    followup_md: |
+      Arızalı aygıtı kullanımdan kaldır. Aynı model klavye/mouse'tan üç veya
+      daha fazla arıza geldiyse bu bir parti sorunudur; satın almaya bildir.
+
+  # ── Hiçbir USB çalışmıyor ─────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "USB denetleyicilerini ve güç yönetimini sıfırla"
+    body_md: |
+      Tek tek aygıtlar değil de USB yığını takıldıysa, denetleyicileri
+      yeniden kurdurmak çoğu vakayı bitirir.
+
+      1. `Aygıt Yöneticisi → Evrensel Seri Veri Yolu denetleyicileri` →
+         **USB Kök Hub** girdilerini tek tek kaldır. Yeniden başlatınca
+         Windows hepsini kendiliğinden geri kurar.
+      2. Her hub'ın Özellikler → **Güç Yönetimi** sekmesinde "Güç tasarrufu
+         için bu aygıtı kapat" işaretini kaldır. Aygıtların arada kesilmesinin
+         en sık sebebi budur.
+      3. Güç seçeneklerinde **USB seçmeli askıya alma**yı devre dışı bırak.
+      4. **Hızlı başlatmayı kapat** ve tam kapatma yaptır — yeniden başlatma
+         değil, tam kapatma. İkisi farklı şeyler.
+    verify_text: "Tam kapatma sonrası aygıtlar tanındı mı?"
+    risk: orta
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Kaldırma sonrası klavye ve mouse dahil **hiçbir USB aygıtı
+      çalışmayabilir** — bu durumda makineyi güç düğmesiyle kapatıp açmak
+      gerekir ve Windows denetleyicileri yeniden kurar.
+
+      Uzak masaüstü ile çalışıyorsan bu adımı uzaktan yapma: bağlantıyı
+      kaybedersen makineye fiziksel erişimi olan biri gerekir. Başlamadan
+      önce kullanıcının cihaza erişebildiğini doğrula.
+    est_seconds: 900
+    edges:
+      - { label: "Aygıtlar tanındı",                          to: N31 }
+      - { label: "Hâlâ hiçbir aygıt tanınmıyor",              to: N50 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — USB denetleyicisi veya güç yönetimi"
+    root_cause: USB_DENETLEYICI
+    closure_note: "USB yığını takılmıştı ya da Windows portları uykuya alıyordu."
+    followup_md: |
+      Arada kesilme şikâyeti tekrar ederse güç yönetimi ayarını grup
+      ilkesiyle dağıtmayı öner — tek tek makinede kapatmak kalıcı olmuyor.
+
+  # ── Kablosuz aygıt ────────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Kablosuz aygıtı yeniden eşleştir"
+    body_md: |
+      Ucuzdan pahalıya:
+
+      1. **Pili değiştir.** Bitmek üzere olan bir pil, aygıtı tamamen ölü
+         göstermek yerine kesik kesik çalıştırır — bu yüzden atlanır.
+      2. Aygıtın kendi **açma/kapama anahtarını** kontrol et.
+      3. USB alıcısı varsa **başka bir porta** tak ve aygıta yaklaştır.
+         Alıcıyı USB 3.0 portundan uzak tut; 2,4 GHz alıcılar için bilinen
+         bir parazit kaynağıdır.
+      4. Bluetooth ise: aygıtı kaldır, eşleştirme modunda yeniden ekle.
+      5. Aygıtla alıcı arasında metal yüzey veya dock varsa araya girme
+         mesafesini azalt.
+    verify_text: "Aygıt bağlandı ve kesintisiz çalışıyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Bağlandı, çalışıyor",                       to: N41 }
+      - { label: "Pil bitmişti",                              to: N42 }
+      - { label: "Hiçbir şekilde bağlanmıyor",                to: N30 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — kablosuz eşleşme yenilendi"
+    root_cause: KABLOSUZ_ESLESME
+    closure_note: "Alıcı veya Bluetooth eşleşmesi bozulmuştu."
+
+  - key: N42
+    type: cozum
+    title: "Çözüldü — pil bitmişti"
+    root_cause: PIL_BITTI
+    closure_note: "Aygıtın pili bitmek üzereydi; kesik çalışıyordu."
+    followup_md: |
+      Kullanıcıya yedek pil bulundur. Bu vakanın servis masasına hiç gelmemesi
+      gerekir; geliyorsa eksik olan pil değil, pil stoğudur.
+
+  # ── Donanım mı, işletim sistemi mi ────────────────────────────────
+  - key: N50
+    type: olcum
+    title: "BIOS'ta çalışıp çalışmadığını ölç"
+    body_md: |
+      Bu tek ölçüm, arızayı donanım ile işletim sistemi arasında kesin olarak
+      böler ve saatlerce boşuna sürücü çalışmasından kurtarır.
+
+      1. Cihazı yeniden başlat ve açılışta BIOS/UEFI'ye gir (F2, F10 veya Del).
+      2. **BIOS içinde klavye çalışıyor mu?** Ok tuşlarıyla menüde gezinmeyi dene.
+      3. BIOS'ta USB desteği / Legacy USB ayarı varsa etkin mi bak.
+
+      BIOS'ta çalışıp Windows'ta çalışmıyorsa donanım sağlamdır ve sorun
+      işletim sistemi tarafındadır. BIOS'ta da çalışmıyorsa donanımdır.
+    verify_text: "BIOS menüsünde klavye/aygıt çalışıyor mu?"
+    requires_user_downtime: true
+    est_seconds: 600
+    edges:
+      - { label: "BIOS'ta çalışıyor, Windows'ta çalışmıyor",  to: N91 }
+      - { label: "BIOS'ta da çalışmıyor",                     to: N92 }
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "Aygıt dock üzerinden bağlı — DOC-001 ile devam et"
+    body_md: |
+      Aygıt bir dock veya hub üzerinden bağlı. Önce aradaki kutuyu elemek
+      gerekir; aygıtla uğraşmak bu haliyle erken.
+
+      Bu runbook'u kapat ve **DOC-001 Dock'a takınca ekran, USB veya ağ
+      çalışmıyor** ile devam et.
+    escalate_to: "DOC-001"
+
+  - key: N91
+    type: eskalasyon
+    title: "L2'ye eskale et — işletim sistemi tarafı"
+    body_md: |
+      Aygıt BIOS'ta çalışıyor, Windows'ta çalışmıyor. Donanım sağlam; sorun
+      sürücü yığınında, ilkede veya kullanıcı profilinde.
+
+      Özete **BIOS testinin sonucunu** mutlaka yaz — bu, L2'nin donanım
+      tarafını hiç açmadan başlamasını sağlar.
+    escalate_to: "L2-Sistem"
+
+  - key: N92
+    type: eskalasyon
+    title: "Donanım servisine eskale et"
+    body_md: |
+      Aygıt BIOS'ta da çalışmıyor. USB denetleyicisi veya anakart tarafı
+      arızası olasılığı yüksek.
+
+      Özete cihaz modelini, hangi portların denendiğini ve BIOS testinin
+      sonucunu ekle.
+    escalate_to: "L2-Donanim"
+
+related: [DOC-001]

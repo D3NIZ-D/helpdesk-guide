@@ -305,3 +305,54 @@ class TestShippedContent:
     def test_templates_are_not_compiled_as_content(self, content_root):
         records, _ = load_roots([content_root])
         assert not [r for r in records if r.code.startswith("XXX")]
+
+
+class TestSecurityContentIsSafe:
+    """Security runbooks must not talk a technician into making it worse."""
+
+    def _record(self, content_root, code):
+        records, _ = load_roots([content_root])
+        found = [r for r in records if r.code == code]
+        assert found, f"{code} is missing"
+        return found[0]
+
+    def test_the_phishing_runbook_never_opens_the_attachment(self, content_root):
+        record = self._record(content_root, "SEC-001")
+        text = record.searchable_body().lower()
+        assert "eki açma" in text or "eki acma" in text
+        # Every path where the user interacted must escalate, not resolve.
+        interacted = [
+            e for n in record.nodes for e in n.edges
+            if "kimlik bilgisi girdi" in e.label.lower() or "eki açtı" in e.label.lower()
+        ]
+        assert interacted
+        nodes = record.node_map
+        for edge in interacted:
+            assert nodes[edge.target].type == "escalation", edge.label
+
+    def test_the_antivirus_runbook_never_restores_from_quarantine_alone(self, content_root):
+        record = self._record(content_root, "SEC-002")
+        # The only resolution that closes a quarantine case must require
+        # the security team to have approved it.
+        false_positive = [n for n in record.nodes if n.root_cause == "YANLIS_POZITIF"]
+        assert false_positive, "SEC-002 has no false-positive resolution"
+        approving = [
+            n for n in record.nodes
+            for e in n.edges
+            if e.target == false_positive[0].key
+        ]
+        assert approving
+        for node in approving:
+            assert "güvenlik ekibi" in (node.verify_text or "").lower(), node.key
+
+    def test_credential_resets_require_identity_verification_first(self, content_root):
+        for code in ("ACC-001", "ACC-002"):
+            record = self._record(content_root, code)
+            resets = [
+                n for n in record.nodes
+                if n.risk == "high" and "sıfırla" in n.title.lower()
+            ]
+            assert resets, f"{code} has no high-risk reset node"
+            for node in resets:
+                body = (node.body_md or "").lower()
+                assert "kimlik" in body and "doğrula" in body, (code, node.key)

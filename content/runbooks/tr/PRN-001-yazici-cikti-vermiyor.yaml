@@ -19,6 +19,7 @@ tags: [yazici, kuyruk, spooler]
 aliases:
   - { term: "yazıcı çıktı vermiyor",   kind: belirti, weight: 1.0 }
   - { term: "yazıcı yazdırmıyor",      kind: belirti, weight: 1.0 }
+  - { term: "yazıcı basmıyor",         kind: belirti, weight: 1.0 }
   - { term: "çıktı alamıyorum",        kind: belirti, weight: 1.0 }
   - { term: "iş kuyrukta kalıyor",     kind: belirti, weight: 1.0 }
   - { term: "yazdırma kuyruğu takıldı", kind: belirti, weight: 1.0 }

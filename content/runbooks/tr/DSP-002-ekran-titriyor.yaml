@@ -1,0 +1,240 @@
+code: DSP-002
+tier: runbook
+title: "Ekran titriyor veya görüntü kalitesi bozuk"
+summary: "Görüntü var ama titriyor, çözünürlük yanlış, renkler bozuk ya da ekranda çizgiler var."
+category: donanim/goruntu
+severity: dusuk
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows, macos]
+  asset: [masaustu, laptop, dock]
+
+tags: [monitor, titreme, cozunurluk, renk, yenileme-hizi]
+
+aliases:
+  - { term: "ekran titriyor",             kind: belirti, weight: 1.0 }
+  - { term: "ekran kırpışıyor",           kind: belirti, weight: 1.0 }
+  - { term: "görüntü kalitesi bozuk",     kind: belirti, weight: 1.0 }
+  - { term: "çözünürlük yanlış",          kind: belirti, weight: 1.0 }
+  - { term: "her şey çok büyük görünüyor", kind: belirti, weight: 1.0 }
+  - { term: "yazılar bulanık",            kind: belirti, weight: 1.0 }
+  - { term: "renkler bozuk çıkıyor",      kind: belirti, weight: 1.0 }
+  - { term: "ekranda çizgiler var",       kind: belirti, weight: 1.0 }
+  - { term: "screen flickering",          kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Görüntü tam olarak nasıl bozuk?"
+    body_md: |
+      Dört bozulma, dört ayrı sebep. Kullanıcıdan ekranı **tarif etmesini**
+      iste, "bozuk" demesini değil; mümkünse telefonla fotoğraf çektir.
+
+      Fotoğrafta titreme görünmez ama çizgi ve renk bozukluğu görünür —
+      ikisini ayırmanın en hızlı yolu budur.
+    est_seconds: 60
+    edges:
+      - { label: "Titriyor / kırpışıyor / gözü yoruyor",       to: N20 }
+      - { label: "Çözünürlük yanlış, her şey büyük veya bulanık", to: N40 }
+      - { label: "Renkler bozuk (pembe, yeşil, soluk tonlar)", to: N50 }
+      - { label: "Sabit çizgiler, lekeler veya ölü noktalar var", to: N60 }
+
+  # ── Titreme kolu ──────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Yenileme hızını kontrol et"
+    body_md: |
+      Titremenin en sık sebebi yanlış yenileme hızıdır ve düzeltmesi bir
+      dakika sürer.
+
+      `Ayarlar → Sistem → Ekran → Gelişmiş ekran ayarları` → **Yenileme hızı**
+
+      1. Monitörün desteklediği en yüksek değeri seç (genelde 60, 75 veya 144 Hz).
+      2. Birden çok ekran varsa **her birini ayrı ayrı** kontrol et.
+      3. Laptopta pil tasarrufu modunun yenileme hızını düşürüp düşürmediğine bak.
+    verify_text: "Yenileme hızı değiştirildikten sonra titreme durdu mu?"
+    est_seconds: 180
+    edges:
+      - { label: "Titreme durdu",                             to: N21 }
+      - { label: "Devam ediyor",                              to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — yenileme hızı yanlıştı"
+    root_cause: YENILEME_HIZI
+    closure_note: "Ekran, monitörün desteklemediği ya da düşük bir yenileme hızında çalışıyordu."
+    followup_md: |
+      Ayar kendiliğinden geri dönüyorsa sürücü veya güç profili sıfırlıyordur;
+      tekrarlarsa bu bir sürücü vakasıdır.
+
+  - key: N30
+    type: talimat
+    title: "Kabloyu ve elektriksel paraziti ele"
+    body_md: |
+      1. Video kablosunu **iki uçtan da** çıkar, sıkıca tak.
+      2. **Farklı bir kablo** dene — özellikle uzun veya ucuz HDMI kablolarda
+         sinyal bozulması titreme olarak görünür.
+      3. Kabloyu güç kablolarının, uzatmaların ve trafoların yanından çek.
+      4. Monitörü **başka bir bilgisayara** bağla: titreme orada da varsa
+         sorun monitörde, yoksa kaynak taraftadır.
+    verify_text: "Hangi değişiklikten sonra titreme kesildi?"
+    est_seconds: 420
+    edges:
+      - { label: "Farklı kabloyla düzeldi",                   to: N31 }
+      - { label: "Başka bilgisayarda da titriyor",            to: N91 }
+      - { label: "Sadece bu bilgisayarda titriyor",           to: N70 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — video kablosu sinyali bozuyordu"
+    root_cause: VIDEO_KABLO_ARIZA
+    closure_note: "Kablo sinyali temiz taşımıyordu."
+    part_required: video_kablo
+    followup_md: |
+      Arızalı kabloyu **çöpe at**, çekmeceye koyma. Kısmen çalışan bir kablo
+      tam bozuk olandan daha çok zaman kaybettirir.
+
+  # ── Çözünürlük kolu ───────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Çözünürlüğü ve ölçeklendirmeyi düzelt"
+    body_md: |
+      `Ayarlar → Sistem → Ekran`
+
+      1. **Çözünürlük**: yanında "(Önerilen)" yazan değeri seç. Panelin kendi
+         çözünürlüğü dışındaki her değer bulanık görünür.
+      2. **Ölçek**: yüksek çözünürlüklü ekranlarda %100 çok küçük olur;
+         önerilen ölçeği kullan.
+      3. Ölçek değiştikten sonra **oturumu kapatıp aç** — bazı uygulamalar
+         eski ölçekte kalır ve bulanık görünmeye devam eder.
+    verify_text: "Önerilen çözünürlük seçilebiliyor mu ve görüntü netleşti mi?"
+    est_seconds: 300
+    edges:
+      - { label: "Düzeldi",                                   to: N41 }
+      - { label: "Düzeldi ama bazı uygulamalar hâlâ bulanık", to: N42 }
+      - { label: "Önerilen çözünürlük listede yok",           to: N70 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — çözünürlük ayarı"
+    root_cause: COZUNURLUK_AYARI
+    closure_note: "Ekran, panelin kendi çözünürlüğü dışında çalışıyordu."
+
+  - key: N42
+    type: cozum
+    title: "Çözüldü — uygulama ölçeklendirmesi"
+    root_cause: OLCEKLENDIRME
+    closure_note: "Eski uygulamalar yeni ölçeği ancak yeniden başlatınca alıyor."
+    followup_md: |
+      Belirli bir uygulama her seferinde bulanık kalıyorsa kısayolunun
+      Uyumluluk sekmesinden yüksek DPI ayarını değiştir. Bu uygulamanın
+      sorunudur, ekranın değil.
+
+  # ── Renk kolu ─────────────────────────────────────────────────────
+  - key: N50
+    type: talimat
+    title: "Renk bozukluğunu izole et"
+    body_md: |
+      Renk kayması genelde fiziksel bir bağlantı sorunudur: eksik bir pin
+      bütün bir renk kanalını götürür.
+
+      1. Kabloyu çıkar, **uç kısmındaki pinlerde** eğrilik veya eksik var mı bak.
+      2. Farklı kablo ve farklı port dene.
+      3. Monitör menüsünden **fabrika ayarlarına döndür**.
+      4. Windows'ta `Renk yönetimi` altında yanlış bir renk profili atanmış mı
+         kontrol et; varsa sistem varsayılanına dön.
+    verify_text: "Renkler hangi adımdan sonra düzeldi?"
+    est_seconds: 420
+    edges:
+      - { label: "Kablo veya port değişince düzeldi",         to: N31 }
+      - { label: "Renk profili kaynaklıydı",                  to: N51 }
+      - { label: "Hiçbiri düzeltmedi",                        to: N91 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — yanlış renk profili atanmıştı"
+    root_cause: RENK_PROFILI
+    closure_note: "Ekrana uymayan bir ICC profili yüklüydü."
+
+  # ── Fiziksel hasar kolu ───────────────────────────────────────────
+  - key: N60
+    type: olcum
+    title: "Panelin kendisinde mi, gelen sinyalde mi olduğunu ölç"
+    body_md: |
+      Bu ayrım, gereksiz bir sürücü çalışmasından kurtarır.
+
+      1. Monitörün **OSD menüsünü** aç. Menü de bozuk görünüyorsa sorun
+         paneldedir — menü monitörün kendi içinden çizilir, sinyalden gelmez.
+      2. Monitörü **başka bir bilgisayara** bağla.
+      3. Varsa monitörün kendi **test deseni** özelliğini çalıştır.
+    verify_text: "OSD menüsü ve başka bilgisayarda görüntü nasıl?"
+    est_seconds: 300
+    edges:
+      - { label: "OSD de bozuk / her bilgisayarda aynı",      to: N91 }
+      - { label: "OSD temiz, sadece bu bilgisayarda bozuk",   to: N70 }
+
+  # ── Sürücü kolu ───────────────────────────────────────────────────
+  - key: N70
+    type: talimat
+    title: "Grafik sürücüsünü temiz kur"
+    body_md: |
+      1. Aygıt Yöneticisi → Görüntü bağdaştırıcıları → sarı ünlem var mı?
+      2. Sürücüyü **üreticinin sitesinden** indir, temiz kurulum seçeneğiyle kur.
+      3. Laptopta hibrit grafik varsa harici çıkışın hangi GPU'ya bağlı
+         olduğunu doğrula.
+      4. Kurulum sonrası yeniden başlat ve çözünürlük listesini yeniden kontrol et.
+    verify_text: "Sürücü kurulumundan sonra görüntü düzeldi mi?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Sürücü sorun çıkarırsa: Aygıt Yöneticisi → ilgili adaptör → Özellikler →
+      Sürücü sekmesi → **Sürücüyü Geri Al**. Seçenek pasifse Güvenli Mod'da
+      önceki sürümü kur.
+
+      Temiz kurulum sırasında ekran birkaç kez kararır ve çözünürlük düşer;
+      bu normaldir, kullanıcıya önceden söyle.
+    est_seconds: 1200
+    edges:
+      - { label: "Düzeldi",                                   to: N71 }
+      - { label: "Düzelmedi",                                 to: N90 }
+
+  - key: N71
+    type: cozum
+    title: "Çözüldü — grafik sürücüsü"
+    root_cause: GPU_SURUCU
+    closure_note: "Sürücü bozuk veya eksikti; temiz kurulum düzeltti."
+    followup_md: |
+      Aynı sürücü sürümü birden çok cihazda sorun çıkarıyorsa dağıtımı durdur
+      ve test grubunda doğrula.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "L2'ye eskale et — kaynak tarafı"
+    body_md: |
+      Kablo, ayar ve sürücü elendi; bozulma yalnız bu bilgisayarda görülüyor.
+      GPU donanımı olasılığı var.
+
+      Özete **hangi bozulmanın görüldüğünü** ve denenen sürücü sürümünü ekle.
+    escalate_to: "L2-Donanim"
+
+  - key: N91
+    type: eskalasyon
+    title: "Monitör değişimi — panel arızası"
+    body_md: |
+      Bozulma monitörün kendi menüsünde de var ya da her bilgisayarda tekrar
+      ediyor. Panel veya monitör elektroniği arızalı.
+
+      Cihaz modelini, seri numarasını ve mümkünse bozulmanın fotoğrafını
+      özete ekle — garanti başvuruları bunsuz ilerlemiyor.
+    escalate_to: "L2-Donanim"
+
+related: [DSP-001, DOC-001]

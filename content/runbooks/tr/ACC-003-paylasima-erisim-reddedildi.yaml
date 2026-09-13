@@ -1,0 +1,251 @@
+# Bu runbook, NET-014 ile karıştırılmaya müsait ve ayrım önemli:
+#
+#   NET-014  paylaşıma ULAŞILAMIYOR      — sürücü bağlanmıyor, yol bulunamıyor
+#   ACC-003  paylaşıma ULAŞILIYOR ama    — "erişim reddedildi", yetki yok
+#
+# İkisini ayıran soru "hangi mesaj çıkıyor" sorusudur; ağ sorununu yetki
+# sorunu sanmak, veri sahibine gereksiz bir yetki talebi göndermek demektir.
+
+code: ACC-003
+tier: runbook
+title: "Paylaşılan klasöre erişim reddediliyor"
+summary: "Klasör görünüyor ama açılmıyor: erişim reddedildi, izin yok ya da içi boş görünüyor."
+category: hesap/erisim
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [yetki, ntfs, paylasim, grup-uyeligi, erisim]
+
+aliases:
+  - { term: "erişim reddedildi",          kind: hata_kodu, weight: 1.2 }
+  - { term: "klasöre yetkim yok",         kind: belirti, weight: 1.0 }
+  - { term: "bu klasörü açma izniniz yok", kind: hata_kodu, weight: 1.2 }
+  - { term: "paylaşıma girmeye yetkim yok", kind: belirti, weight: 1.0 }
+  - { term: "dosyayı açamıyorum izin hatası", kind: belirti, weight: 1.0 }
+  - { term: "klasör açılıyor ama içi boş", kind: belirti, weight: 1.0 }
+  - { term: "access denied klasör",       kind: hata_kodu, weight: 1.1 }
+  - { term: "yetki talebi paylaşılan klasör", kind: belirti, weight: 0.9 }
+
+disambiguation:
+  - question: "Klasöre ulaşabiliyor musun, yoksa yol hiç açılmıyor mu?"
+    options:
+      - { answer: "Açılıyor ama 'erişim reddedildi' diyor", to: ACC-003 }
+      - { answer: "Sürücü kayboldu / yol hiç bulunamıyor",  to: NET-014 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Ekranda tam olarak hangi mesaj çıkıyor?"
+    body_md: |
+      Mesajı **kelimesi kelimesine** okut. "Erişemiyorum" dört farklı arızayı
+      anlatabilir ve üçünün çözümü birbirinden tamamen farklıdır.
+
+      * "Erişim reddedildi" / "izniniz yok" → yetki
+      * "Ağ yolu bulunamadı" → ağ veya eşleme
+      * Kimlik bilgisi penceresi → kayıtlı parola
+      * Klasör açılıyor ama boş → görünürlük veya alt klasör izni
+    est_seconds: 60
+    edges:
+      - { label: "Erişim reddedildi / izniniz yok",           to: N20 }
+      - { label: "Ağ yolu bulunamadı / sürücü kayboldu",      to: N90 }
+      - { label: "Kimlik bilgisi soruyor, kabul etmiyor",     to: N40 }
+      - { label: "Klasör açılıyor ama içi boş görünüyor",     to: N30 }
+
+  # ── Yetki kolu ────────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Etkin yetkiyi doğrula"
+    body_md: |
+      Yetki vermeden önce **gerçekten yetkisi olup olmadığını** öğren; vakaların
+      önemli bir kısmı yetkinin var olup henüz oturuma yansımamış olmasıdır.
+
+      1. Kullanıcının hangi gruplarda olduğunu listele: `whoami /groups`
+      2. Klasöre erişimi hangi grup sağlıyor, kullanıcı o grupta mı?
+      3. **Grup yakın zamanda eklendiyse** kullanıcı oturumu kapatıp açmalı.
+         Grup üyelikleri oturum açılışında verilen belirteçte taşınır;
+         yeni üyelik eski oturuma yansımaz. Bu, "yetki verdim ama hâlâ
+         giremiyor" vakalarının neredeyse tamamıdır.
+      4. Paylaşım izni ile NTFS izninin **ikisi de** gerekir; en kısıtlayıcı
+         olan geçerlidir.
+    verify_text: "Oturum yenilendikten sonra klasör açılıyor mu?"
+    est_seconds: 600
+    edges:
+      - { label: "Oturum yenilenince erişim geldi",           to: N21 }
+      - { label: "Kullanıcı ilgili grupta değil",             to: N22 }
+      - { label: "Grupta ama yine reddediliyor",              to: N91 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — grup üyeliği oturuma yansımamıştı"
+    root_cause: GRUP_UYELIGI_GECIKMESI
+    closure_note: "Yetki vardı; kullanıcının oturumu eski belirteçle çalışıyordu."
+    followup_md: |
+      Yetki veren ekibe şunu söylet: yetki verdikten sonra kullanıcıya
+      **oturumu kapatıp açmasını** söylesinler. Bu tek cümle, bu vaka
+      sınıfının çoğunu servis masasına hiç gelmeden bitirir.
+
+  - key: N22
+    type: talimat
+    title: "Yetki talebini veri sahibine yönlendir"
+    body_md: |
+      **L1 paylaşım yetkisi vermez.** Kimin neye erişeceğine veri sahibi karar
+      verir; servis masası bu kararı hızlandırır, yerine geçmez.
+
+      1. Klasörün **sahibini** bul (paylaşım kaydı, klasör sahipliği veya
+         departman yöneticisi).
+      2. Talebi sahibe ilet: kim, hangi klasör, hangi seviye (okuma / yazma),
+         **neden** ve ne kadar süreyle.
+      3. Onayı **yazılı** al. Telefonda "tamam" demesi yeterli değil; altı ay
+         sonra denetimde sorulan şey bu kayıt olacak.
+      4. Onay gelince yetkiyi tanımlayacak ekibe ilet ve kullanıcıya oturum
+         yenilemesi gerektiğini söyle.
+    verify_text: "Sahip yazılı onay verdi ve yetki tanımlandı mı?"
+    est_seconds: 900
+    edges:
+      - { label: "Onaylandı, yetki verildi, erişim geldi",    to: N23 }
+      - { label: "Onay bekliyor veya reddedildi",             to: N92 }
+
+  - key: N23
+    type: cozum
+    title: "Çözüldü — yetki veri sahibinin onayıyla verildi"
+    root_cause: YETKI_VERILDI
+    closure_note: "Kullanıcının bu klasöre erişimi yoktu; sahibin onayıyla tanımlandı."
+    followup_md: |
+      Onayı ve gerekçeyi bilete ekle. Geçici bir erişimse **bitiş tarihini**
+      de yaz; süresi dolmuş erişimler, kimsenin kaldırmadığı için birikir ve
+      bir gün denetimde karşına çıkar.
+
+  # ── Boş görünüyor kolu ────────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Görünürlük ve alt klasör izinlerini kontrol et"
+    body_md: |
+      Boş görünen bir klasör genelde boş değildir; kullanıcı içeriği
+      görmeye yetkili değildir.
+
+      1. **Erişim tabanlı numaralandırma** (ABE) açıksa kullanıcı yalnız
+         yetkili olduğu alt klasörleri görür. Üst klasöre erişimi var ama
+         içindekilere yok demektir — bu tasarım gereğidir, arıza değil.
+      2. Alt klasörlerde **izin devralma kapatılmış** olabilir; üstte olan
+         yetki altta geçerli değildir.
+      3. Gizli dosya/klasör gösterimini aç, gerçekten boş mu bak.
+      4. Kullanıcının beklediği klasörün adını ve tam yolunu doğrula —
+         benzer adlı iki paylaşım sık karışır.
+    verify_text: "Beklenen içerik göründü mü, yoksa alt klasörde mi izin eksik?"
+    est_seconds: 600
+    edges:
+      - { label: "Alt klasör izni eksikti",                   to: N22 }
+      - { label: "ABE gizliyormuş, beklenen davranış",        to: N32 }
+      - { label: "Yanlış klasöre bakılıyormuş",               to: N33 }
+      - { label: "Hiçbiri açıklamıyor",                       to: N91 }
+
+  - key: N32
+    type: cozum
+    title: "Çözüldü — erişim tabanlı numaralandırma, arıza değil"
+    root_cause: ABE_GIZLEME
+    closure_note: "Kullanıcı yalnız yetkili olduğu alt klasörleri görüyor; tasarım gereği."
+    followup_md: |
+      Kullanıcının gerçekten göremediği bir alt klasöre ihtiyacı varsa bu bir
+      yetki talebidir; N22 adımındaki akışa gönder.
+
+  - key: N33
+    type: cozum
+    title: "Çözüldü — yanlış paylaşım klasörüne bakılıyordu"
+    root_cause: YANLIS_KLASOR
+    closure_note: "Benzer adlı başka bir paylaşım açılmıştı."
+    followup_md: "Doğru UNC yolunu kullanıcıya yazılı gönder ve kısayol oluşturttur."
+
+  # ── Kimlik bilgisi kolu ───────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Kayıtlı kimlik bilgisini temizle"
+    body_md: |
+      Paylaşım sürekli parola soruyorsa, Windows eski bir kimlik bilgisini
+      tekrar tekrar deniyor olabilir.
+
+      1. `Denetim Masası → Kimlik Bilgileri Yöneticisi → Windows Kimlik
+         Bilgileri` → sunucuya ait kayıtları **sil**.
+      2. Açık oturumları kapat: `net use * /delete`
+      3. Paylaşıma yeniden bağlan, kimlik bilgisini elle girdir.
+
+      **Dikkat:** eski bir parolayı tekrar tekrar denemek hesabı kilitler.
+      Kullanıcının hesabı kilitleniyorsa temizliği bitirmeden yeniden
+      denetme.
+    verify_text: "Temizlik sonrası paylaşım kimlik sormadan açılıyor mu?"
+    risk: orta
+    est_seconds: 600
+    edges:
+      - { label: "Açıldı",                                    to: N41 }
+      - { label: "Hesap kilitleniyor",                        to: N93 }
+      - { label: "Hâlâ kimlik soruyor",                       to: N91 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — kayıtlı eski kimlik bilgisi"
+    root_cause: ESKI_KIMLIK_BILGISI
+    closure_note: "Kimlik Bilgileri Yöneticisi'nde eski parola kayıtlıydı."
+    followup_md: |
+      Bu, hesap kilitlenmelerinin de en sık sebebidir (bkz. ACC-001).
+      Kullanıcının telefonunda ve diğer cihazlarında da eski parola kayıtlı
+      mı diye sor; biri kalırsa kilitlenme geri gelir.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "Bu bir yetki sorunu değil — NET-014 ile devam et"
+    body_md: |
+      Klasöre hiç ulaşılamıyor; yetki katmanına henüz sıra gelmedi. Bu bir
+      bağlantı veya eşleme sorunudur.
+
+      Bu runbook'u kapat ve **NET-014 Ağ sürücüsü açılışta bağlanmıyor** ile
+      devam et. Yetki talebi açma — sorun orada değil.
+    escalate_to: "NET-014"
+
+  - key: N91
+    type: eskalasyon
+    title: "Dosya sunucusu ekibine eskale et"
+    body_md: |
+      Grup üyeliği doğru, oturum yenilendi, kimlik bilgisi temizlendi ve
+      erişim hâlâ reddediliyor. Etkin izinlerin sunucu tarafında incelenmesi
+      gerekiyor.
+
+      Özete **tam UNC yolunu**, `whoami /groups` çıktısını ve tam hata
+      mesajını ekle. Üçü olmadan etkin izin hesaplanamıyor.
+    escalate_to: "L2-Dosya-Sunucusu"
+
+  - key: N92
+    type: eskalasyon
+    title: "Veri sahibinin onayı bekleniyor"
+    body_md: |
+      Talep veri sahibine iletildi; karar onun.
+
+      Vakayı "beklemede" olarak işaretle ve kullanıcıya **kimden onay
+      beklendiğini** söyle. Kimden beklendiğini bilmeyen kullanıcı iki gün
+      sonra servis masasını arar ve kimse cevabı bilmez.
+
+      Onay reddedildiyse bunu da kullanıcıya ilet ve vakayı kapat — reddedilen
+      bir erişim talebi de bir sonuçtur.
+    escalate_to: "Veri-Sahibi"
+
+  - key: N93
+    type: eskalasyon
+    title: "Hesap kilitleniyor — ACC-001 ile devam et"
+    body_md: |
+      Erişim denemeleri hesabı kilitliyor. Önce kilitlenmenin kaynağı
+      temizlenmeli; paylaşım yetkisiyle uğraşmak bu haliyle anlamsız.
+
+      Bu runbook'u kapat ve **ACC-001 Hesap kilitli veya parola kabul
+      edilmiyor** ile devam et.
+    escalate_to: "ACC-001"
+
+related: [NET-014, ACC-001, PRN-002]

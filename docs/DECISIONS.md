@@ -258,6 +258,48 @@ for the query; applying it to the trigger too costs one comparison.
 
 ---
 
+## 10d. Alias containment, not just alias equality
+
+**Built first:** `term_key` compared the *sets* of stems for equality, so
+an alias matched only when the query used exactly those words.
+
+**Built now:** an alias whose stems are all present in the (canonicalised)
+query also counts, at a lower floor than an exact match.
+
+**Why:** set equality is brittle in the one direction users actually go —
+they add words. "printer bir türlü basmıyor" contains every word of the
+alias "yazıcı basmıyor" and was scoring no alias signal at all, leaving
+three printer records separated by two points of BM25 noise. Containment
+is genuinely weaker evidence (the extra words might have changed the
+meaning), so it earns 0.50 rather than 0.82.
+
+The guard is that a single everyday word is not enough on its own; an
+error code or an abbreviation is, because nobody types those by accident.
+Only the records FTS already surfaced are examined, so the cost is a few
+hundred alias rows rather than the whole table.
+
+---
+
+## 10e. The FTS body column is nearly weightless
+
+**Built first:** BM25 column weights of title 8, aliases 6, body 1, tags 3.
+
+**Built now:** the same, with body at 0.3.
+
+**Why:** the body column indexes `body_md`, `verify_text` and edge labels
+— that is *instruction* prose, while a user's query describes a
+*symptom*. Instructions are full of generic verbs, and a long runbook
+accumulates enough incidental matches to outrank a record whose title is
+about the thing being asked. The MFA runbook was the top hit for "her
+işlem beni bekletiyor" because one of its escalation notes happens to
+contain "bekletildiğini".
+
+Body still earns its place: it is the only way to find a term that
+appears nowhere else, like "AHCI" or "gpresult". It just no longer
+overrules a curated alias. A test asserts both halves of that.
+
+---
+
 ## 11. Scope not yet built
 
 Everything below is in the design and is deliberately not in v1.

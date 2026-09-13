@@ -1,0 +1,209 @@
+code: PRN-002
+tier: runbook
+title: "Ağ yazıcısı bulunamıyor veya eklenemiyor"
+summary: "Yazıcı listede çıkmıyor, eklenirken hata veriyor ya da sürücü kurulamıyor."
+category: yazici/kurulum
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [yazici, kurulum, surucu, yazdirma-sunucusu, tcp-ip]
+
+aliases:
+  - { term: "yazıcı eklenemiyor",         kind: belirti, weight: 1.0 }
+  - { term: "ağ yazıcısı bulunamıyor",    kind: belirti, weight: 1.0 }
+  - { term: "yazıcı listede çıkmıyor",    kind: belirti, weight: 1.0 }
+  - { term: "yazıcı kuramıyorum",         kind: belirti, weight: 1.0 }
+  - { term: "yazıcı sürücüsü yüklenmiyor", kind: belirti, weight: 1.0 }
+  - { term: "yeni yazıcı tanımlayamıyorum", kind: belirti, weight: 0.9 }
+  - { term: "yazdırma sunucusuna bağlanamıyorum", kind: belirti, weight: 1.0 }
+  - { term: "cannot add printer",         kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Kurulum hangi aşamada takılıyor?"
+    body_md: |
+      Dört aşama, dört ayrı sebep. Kullanıcıya ekleme adımlarını yaptır ve
+      **nerede durduğunu** gör; anlattırmakla izlemek arasında fark var.
+    est_seconds: 60
+    edges:
+      - { label: "Yazıcı arama listesinde hiç görünmüyor",    to: N20 }
+      - { label: "Görünüyor ama eklerken hata veriyor",       to: N40 }
+      - { label: "Yazdırma sunucusu paylaşımına erişemiyorum", to: N30 }
+      - { label: "Eklendi ama çıktı vermiyor",                to: N90 }
+
+  # ── Görünmüyor ────────────────────────────────────────────────────
+  - key: N20
+    type: olcum
+    title: "Yazıcıya ağ üzerinden ulaşılıp ulaşılmadığını ölç"
+    body_md: |
+      Otomatik bulma çoğu kurumsal ağda kapalıdır; listede olmaması yazıcının
+      erişilemez olduğu anlamına gelmez.
+
+      1. Yazıcının **panelinden IP adresini oku** (Ayarlar → Ağ → durum sayfası).
+      2. `ping <ip>` çalıştır.
+      3. Tarayıcıdan `http://<ip>` adresini aç — yazıcının web arayüzü açılıyorsa
+         ağ tarafı sağlamdır ve geri kalan her şey istemci tarafındadır.
+      4. Yazıcı ve kullanıcı **aynı VLAN'da mı**? Farklı ağlardaysa otomatik
+         bulma hiçbir zaman çalışmaz.
+    verify_text: "Yazıcının IP'sine ping gidiyor mu, web arayüzü açılıyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Ping gidiyor, web arayüzü açılıyor",        to: N40 }
+      - { label: "Ping gitmiyor",                             to: N91 }
+      - { label: "Yazıcı kapalı veya uyku modundaydı",        to: N21 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — yazıcı kapalı veya uyku modundaydı"
+    root_cause: YAZICI_KAPALI
+    closure_note: "Cihaz ağda görünmüyordu çünkü kapalıydı."
+    followup_md: |
+      Yazıcı sık sık derin uykuya geçip ağdan düşüyorsa panelinden uyku
+      süresini uzat. Aksi halde bu vaka her pazartesi sabahı geri gelir.
+
+  # ── Sunucu paylaşımı ──────────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Yazdırma sunucusu paylaşımını doğrula"
+    body_md: |
+      1. Çalıştır kutusuna `\\yazdirma-sunucusu` yaz. Paylaşılan yazıcılar
+         listeleniyor mu?
+      2. Listeleniyorsa yazıcıya çift tıkla; sürücü otomatik kurulmalı.
+      3. "Erişim reddedildi" alıyorsan bu bir yetki sorunudur, kurulum
+         sorunu değil.
+      4. Sunucu adı çözümlenmiyorsa IP ile dene — çözümleniyorsa sorun DNS'te.
+    verify_text: "Paylaşım listesi açılıyor mu ve yazıcı eklenebiliyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Açıldı, yazıcı eklendi",                    to: N31 }
+      - { label: "Erişim reddedildi",                         to: N92 }
+      - { label: "Sunucuya hiç erişilemiyor",                 to: N91 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — yazdırma sunucusu üzerinden eklendi"
+    root_cause: YAZDIRMA_SUNUCUSU
+    closure_note: "Yazıcı paylaşım yolundan kuruldu."
+
+  # ── Ekleme hatası ─────────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "TCP/IP portu ile elle ekle"
+    body_md: |
+      Otomatik bulmayı bırak, yazıcıyı doğrudan adresiyle ekle. Bu yöntem
+      neredeyse her zaman çalışır ve VLAN sınırlarından etkilenmez.
+
+      `Ayarlar → Yazıcılar → Yazıcı ekle → Listelenen yazıcı yok`
+      → **TCP/IP adresi kullanarak ekle** → yazıcının IP'sini gir.
+
+      1. Aygıt türü: **TCP/IP Aygıtı**, otomatik algılamayı işaretsiz bırak.
+      2. Sürücü seçiminde mümkünse üreticinin **evrensel (universal)**
+         sürücüsünü kullan — modele özel sürücülerden daha az bozulur.
+      3. Kurulumdan sonra **test sayfası** yazdır.
+    verify_text: "Yazıcı eklendi ve test sayfası çıktı mı?"
+    risk: dusuk
+    requires_admin: true
+    est_seconds: 600
+    edges:
+      - { label: "Eklendi ve test sayfası çıktı",             to: N41 }
+      - { label: "Sürücü kurulurken hata veriyor",            to: N50 }
+      - { label: "Eklendi ama test sayfası çıkmadı",          to: N90 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — TCP/IP portu ile elle eklendi"
+    root_cause: OTOMATIK_BULMA_KAPALI
+    closure_note: "Otomatik bulma çalışmıyordu; yazıcı doğrudan adresiyle eklendi."
+    followup_md: |
+      Yazıcının IP'si DHCP'den geliyorsa adres değiştiğinde bu kurulum
+      bozulacak. **DHCP rezervasyonu** iste; yoksa aynı kullanıcı birkaç ay
+      sonra "yazıcı çevrimdışı" diye arar.
+
+  - key: N50
+    type: talimat
+    title: "Eski sürücü kalıntılarını temizle"
+    body_md: |
+      Aynı yazıcının eski veya yanlış mimarideki sürücüsü, yenisinin
+      kurulmasını engeller.
+
+      1. Yazdırma biriktiricisini durdur: `net stop spooler`
+      2. `printmanagement.msc` → **Tüm Sürücüler** → ilgili yazıcının eski
+         sürücülerini sil.
+      3. Biriktiriciyi başlat: `net start spooler`
+      4. Yazıcıyı yeniden ekle, bu kez sürücüyü **üreticinin paketinden** seç.
+    verify_text: "Temizlik sonrası sürücü hatasız kuruldu mu?"
+    risk: orta
+    requires_admin: true
+    rollback_md: |
+      Biriktirici durdurulduğunda makinedeki **tüm** bekleyen yazdırma işleri
+      kaybolur; paylaşılan bir makinede önce kullanıcılara haber ver.
+
+      Sürücü silme sonrası başka yazıcılar da çalışmazsa onları yeniden
+      eklemek gerekir — hangi yazıcıların kurulu olduğunu başlamadan önce
+      not al.
+    est_seconds: 900
+    edges:
+      - { label: "Kuruldu ve çalışıyor",                      to: N51 }
+      - { label: "Hâlâ kurulamıyor",                          to: N93 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — eski sürücü kalıntısı engelliyordu"
+    root_cause: SURUCU_KALINTI
+    closure_note: "Önceki sürücü kaydı yeni kurulumu engelliyordu."
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "Yazıcı kuruldu ama basmıyor — PRN-001 ile devam et"
+    body_md: |
+      Kurulum tamamlandı; sorun artık kurulumda değil, yazdırmada.
+
+      Bu runbook'u kapat ve **PRN-001 Yazıcı çıktı vermiyor** ile devam et.
+    escalate_to: "PRN-001"
+
+  - key: N91
+    type: eskalasyon
+    title: "Ağ ekibine eskale et"
+    body_md: |
+      Yazıcıya veya yazdırma sunucusuna ağ üzerinden ulaşılamıyor. İstemcide
+      yapılacak bir şey kalmadı.
+
+      Özete **yazıcının IP'sini, kullanıcının bulunduğu ağı/katı** ve ping
+      sonucunu ekle. VLAN ayrımı şüphesi varsa bunu açıkça yaz.
+    escalate_to: "L2-Ag"
+
+  - key: N92
+    type: eskalasyon
+    title: "Bu bir yetki sorunu — ACC-003 ile devam et"
+    body_md: |
+      Yazdırma sunucusu paylaşımına erişim reddediliyor. Bu bir kurulum
+      arızası değil, bir izin arızasıdır.
+
+      Bu runbook'u kapat ve **ACC-003 Paylaşılan klasöre erişilemiyor** ile
+      devam et; aynı yetki mekanizması geçerli.
+    escalate_to: "ACC-003"
+
+  - key: N93
+    type: eskalasyon
+    title: "L2 / yazdırma altyapısına eskale et"
+    body_md: |
+      Ağ erişimi var, elle ekleme ve sürücü temizliği denendi, kurulum yine
+      tamamlanamıyor.
+
+      Özete **yazıcı modelini, denenen sürücü sürümünü ve tam hata mesajını**
+      ekle. Hata kodu olmadan sürücü sorunları teşhis edilemiyor.
+    escalate_to: "L2-Yazdirma"
+
+related: [PRN-001, ACC-003]

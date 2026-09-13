@@ -9,11 +9,14 @@ section 22 adds for scale:
           + 0.10 * context       OS / asset type agrees
           + 0.10 * history       this record actually resolves calls
 
-    score = base * verification_weight + tier_priority
+    score = max(base, alias_floor) * verification_weight
 
 The verification multiplier (section 22.5) is the important one once the
 corpus grows: at 5,000 records, unreviewed content outranking a verified
 runbook is how a knowledge base becomes worse than no knowledge base.
+
+Tier is deliberately absent from the formula -- section 22.9 asks for a
+tree to win *on an equal score*, so it lives in the sort key instead.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ from typing import Any
 
 from ..content.schema import TIER_PRIORITY, VERIFICATION_WEIGHT
 from .lexicon import Lexicon
-from .normalize import Normalized, normalize_query
+from .normalize import Normalized, normalize_query, stem
 
 __all__ = ["Candidate", "MatchResult", "Matcher", "Thresholds"]
 
@@ -133,6 +136,9 @@ _ALIAS_FLOOR: dict[str, float] = {
     "error_code": 0.88,
     "alias_exact": 0.82,
     "alias_key": 0.64,
+    # Containment is real evidence but weaker than equality: the words the
+    # user added on top of the alias might have changed what they meant.
+    "alias_contains": 0.50,
 }
 
 #: Which fault-intent classes a category is plausibly about.  A coarse
@@ -187,6 +193,7 @@ class Matcher:
         scored: dict[int, Candidate] = {}
         self._score_alias_matches(query, scored, lang)
         self._score_fts(query, scored, lang)
+        self._score_alias_containment(query, scored)
 
         scopes = self._scopes(list(scored)) if context else {}
         for candidate in scored.values():
@@ -276,6 +283,58 @@ class Matcher:
                 candidate.method = method
             scored[int(row["record_id"])] = candidate
 
+    def _score_alias_containment(self, query: Normalized, scored: dict[int, Candidate]) -> None:
+        """Credit an alias whose words all appear somewhere in the query.
+
+        ``term_key`` matching requires the two stem *sets* to be equal, so
+        a user who adds a filler word loses the alias entirely: "printer
+        bir türlü basmıyor" contains every word of the alias "yazıcı
+        basmıyor" and was scoring no alias signal at all, leaving three
+        printer records separated by two points of BM25 noise.
+
+        Containment is weaker evidence than equality -- the extra words
+        might have changed the meaning -- so it earns a lower floor.
+        Query stems are canonicalised first, which is what lets "printer"
+        satisfy an alias written with "yazıcı".
+
+        Only the records FTS already surfaced are examined, so this reads
+        a few hundred alias rows rather than the whole table.
+        """
+        if not scored:
+            return
+
+        candidate_stems = set(query.stems)
+        if self.lexicon is not None:
+            for token in query.stems:
+                canon = self.lexicon.canonicalise(token)
+                if canon:
+                    candidate_stems.add(canon)
+                    candidate_stems.add(stem(canon))
+
+        ids = list(scored)
+        placeholders = ",".join("?" for _ in ids)
+        rows = self.db.query(
+            f"SELECT record_id, term, term_key, weight, kind FROM aliases "
+            f"WHERE record_id IN ({placeholders})",
+            tuple(ids),
+        )
+
+        for row in rows:
+            key_stems = set((row["term_key"] or "").split())
+            if not key_stems or not key_stems <= candidate_stems:
+                continue
+            # A single everyday word is not evidence on its own; an error
+            # code or an abbreviation is, because nobody types those by
+            # accident.
+            if len(key_stems) < 2 and row["kind"] not in {"error_code", "abbreviation"}:
+                continue
+
+            strength = min(0.60 * float(row["weight"] or 1.0), 1.0)
+            candidate = scored[int(row["record_id"])]
+            if strength > candidate.signals.get("alias_exact", 0.0):
+                candidate.signals["alias_exact"] = strength
+                candidate.method = "alias_contains"
+
     def _score_fts(self, query: Normalized, scored: dict[int, Candidate], lang: str) -> None:
         """BM25 relevance over title, aliases, body and tags."""
         expression = query.fts_query()
@@ -284,7 +343,17 @@ class Matcher:
         try:
             rows = self.db.query(
                 """
-                SELECT f.record_id, bm25(fts_records, 8.0, 6.0, 1.0, 3.0) AS rank,
+                -- Column weights: title, aliases, body, tags.
+                -- Body is deliberately near-zero. It indexes instruction
+                -- prose, not symptom descriptions, and a long runbook body
+                -- accumulates enough incidental matches on generic verbs to
+                -- outrank a title: the MFA runbook was winning a query
+                -- about a slow computer because one of its escalation
+                -- notes contains the word "bekletildigini". Body still
+                -- earns its place for terms that appear nowhere else
+                -- ("AHCI", "gpresult"), just not enough to overrule a
+                -- curated alias.
+                SELECT f.record_id, bm25(fts_records, 8.0, 6.0, 0.3, 3.0) AS rank,
                        r.code, r.title, r.summary, r.tier, r.lang, r.verification,
                        r.severity, c.code AS category_code
                 FROM fts_records f

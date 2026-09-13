@@ -222,3 +222,84 @@ class TestNewRunbooksAreReachable:
 
     def test_wifi_does_not_swallow_the_general_network_runbook(self, matcher):
         assert matcher.search("internete bağlanamıyorum").best.code == "NET-001"
+
+
+class TestAliasContainment:
+    """A filler word must not cost the user their alias."""
+
+    def test_extra_words_do_not_destroy_an_alias_match(self, matcher):
+        # "yazıcı basmıyor" is an alias of PRN-001; the query wraps it in
+        # two words that mean nothing. Set-equality matching scored this
+        # at zero and left three printer records separated by BM25 noise.
+        result = matcher.search("printer bir turlu basmiyor")
+        assert result.best.code == "PRN-001", [c.code for c in result.candidates]
+        assert result.best.signals["alias_exact"] > 0
+
+    def test_containment_is_weaker_than_an_exact_alias(self, matcher):
+        exact = matcher.search("yazıcı basmıyor").best
+        contained = matcher.search("printer bir turlu basmiyor").best
+        assert exact.code == contained.code == "PRN-001"
+        assert exact.score > contained.score
+
+    def test_a_single_common_word_is_not_enough_on_its_own(self, matcher):
+        # One everyday word shared with an alias is not evidence; an error
+        # code is, because nobody types those by accident.
+        assert matcher.search("0x0000007B").best.signals["alias_exact"] > 0
+        weak = matcher.search("bilgisayar").best
+        if weak is not None:
+            assert weak.signals["alias_exact"] < 0.6 or weak.method != "alias_contains"
+
+
+class TestBodyTextDoesNotOutrankTitles:
+    def test_instruction_prose_does_not_outrank_a_matching_symptom(self, matcher):
+        # The MFA runbook's escalation note contains "bekletildigini", and
+        # that single incidental word was winning a query about a slow
+        # computer outright. Body text still contributes -- it has to, for
+        # terms that appear nowhere else -- but it no longer beats a record
+        # whose subject actually is the thing being asked about.
+        codes = [c.code for c in matcher.search(
+            "her islem beni bekletiyor cok gec tepki veriyor"
+        ).candidates]
+        assert "PRF-001" in codes[:2], codes
+        assert codes.index("PRF-001") < codes.index("ACC-002"), codes
+
+    def test_body_terms_are_still_findable(self, matcher):
+        # The counterweight: lowering the body weight must not make text
+        # that appears only deep inside a runbook unreachable.
+        assert matcher.search("gpresult").candidates
+        assert matcher.search("credential manager").candidates
+
+
+class TestTheLastSixRecords:
+    @pytest.mark.parametrize(
+        "query,expected",
+        [
+            ("ekran titriyor", "DSP-002"),
+            ("dock çalışmıyor", "DOC-001"),
+            ("yazıcı eklenemiyor", "PRN-002"),
+            ("mfa çalışmıyor", "ACC-002"),
+            ("erişim reddedildi", "ACC-003"),
+            ("klavye çalışmıyor", "PER-001"),
+        ],
+    )
+    def test_each_is_the_top_hit_for_its_symptom(self, matcher, query, expected):
+        assert matcher.search(query).best.code == expected
+
+    def test_display_faults_do_not_answer_each_other(self, matcher):
+        # Same category, adjacent symptoms: "no picture" and "bad picture".
+        assert matcher.search("ekran siyah").best.code == "DSP-001"
+        assert matcher.search("ekran titriyor").best.code == "DSP-002"
+
+    def test_printer_output_and_printer_setup_stay_apart(self, matcher):
+        assert matcher.search("yazıcı çıktı vermiyor").best.code == "PRN-001"
+        assert matcher.search("yazıcı eklenemiyor").best.code == "PRN-002"
+
+    def test_share_access_is_not_confused_with_share_connectivity(self, matcher):
+        # The message on screen is the whole difference: "access denied"
+        # is a permission fault, "drive gone" is a connection fault.
+        assert matcher.search("erişim reddedildi").best.code == "ACC-003"
+        assert matcher.search("ağ sürücüsü kayboldu").best.code == "NET-014"
+
+    def test_account_lockout_and_mfa_stay_apart(self, matcher):
+        assert matcher.search("hesabım kilitlendi").best.code == "ACC-001"
+        assert matcher.search("doğrulama kodu gelmiyor").best.code == "ACC-002"

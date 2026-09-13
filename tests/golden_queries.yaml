@@ -162,3 +162,50 @@
 - { query: "bataryasi bir turlu dolmuyor dizustunun",     expect: PWR-002, max_rank: 2 }
 - { query: "defender bir dosyayi engelledi is duruyor",   expect: SEC-002, max_rank: 2 }
 - { query: "ekranima fidye notu cikti",                   expect: SEC-002, max_rank: 2 }
+
+# ── DSP-002 Ekran titriyor / görüntü kalitesi bozuk ──────────────────
+- { query: "ekran titriyor",                    expect: DSP-002, max_rank: 1 }
+- { query: "ekran kirpisiyor gozumu yoruyor",   expect: DSP-002, max_rank: 1 }
+- { query: "çözünürlük yanlış",                 expect: DSP-002, max_rank: 1 }
+- { query: "yazilar bulanik cikiyor",           expect: DSP-002, max_rank: 1 }
+
+# ── DOC-001 Dock'a takınca çalışmıyor ────────────────────────────────
+- { query: "dock çalışmıyor",                   expect: DOC-001, max_rank: 1 }
+- { query: "docking station calismiyor",        expect: DOC-001, max_rank: 1 }
+- { query: "usb-c hub tanınmıyor",              expect: DOC-001, max_rank: 1 }
+- { query: "dock'taki usb portlari olu",        expect: DOC-001, max_rank: 1 }
+
+# ── PRN-002 Ağ yazıcısı eklenemiyor ──────────────────────────────────
+- { query: "yazıcı eklenemiyor",                expect: PRN-002, max_rank: 1 }
+- { query: "ag yazicisi bulunamiyor",           expect: PRN-002, max_rank: 1 }
+- { query: "yazıcı kuramıyorum",                expect: PRN-002, max_rank: 1 }
+- { query: "yazici surucusu yuklenmiyor",       expect: PRN-002, max_rank: 1 }
+
+# ── ACC-002 MFA cihazı değişti ───────────────────────────────────────
+- { query: "mfa çalışmıyor",                    expect: ACC-002, max_rank: 1 }
+- { query: "dogrulama kodu gelmiyor",           expect: ACC-002, max_rank: 1 }
+- { query: "telefonumu değiştirdim giremiyorum", expect: ACC-002, max_rank: 1 }
+- { query: "sms kodu ulasmiyor",                expect: ACC-002, max_rank: 1 }
+
+# ── ACC-003 Paylaşıma erişim reddedildi ──────────────────────────────
+# The pair below is the point of this record: the same folder, two
+# different faults, and the message on screen is what separates them.
+- { query: "erişim reddedildi",                 expect: ACC-003, max_rank: 1 }
+- { query: "klasöre yetkim yok",                expect: ACC-003, max_rank: 1 }
+- { query: "bu klasoru acma izniniz yok",       expect: ACC-003, max_rank: 1 }
+- { query: "ağ sürücüsü kayboldu",              expect: NET-014, max_rank: 1 }
+
+# ── PER-001 Klavye / mouse / USB tanınmıyor ──────────────────────────
+- { query: "klavye çalışmıyor",                 expect: PER-001, max_rank: 1 }
+- { query: "mouse çalışmıyor",                  expect: PER-001, max_rank: 1 }
+- { query: "usb aygıtı tanınmıyor",             expect: PER-001, max_rank: 1 }
+- { query: "usb bellek gorunmuyor",             expect: PER-001, max_rank: 1 }
+
+# ── Hard cases for the last six ──────────────────────────────────────
+- { query: "monitorde goruntu oynuyor gozum agriyor",  expect: DSP-002, max_rank: 3 }
+- { query: "her sey devasa gorunuyor ekranda",         expect: DSP-002, max_rank: 3 }
+- { query: "istasyona takinca ne ekran ne klavye",     expect: DOC-001, max_rank: 3 }
+- { query: "yeni yazici tanimlamaya calisiyorum olmuyor", expect: PRN-002, max_rank: 2 }
+- { query: "yeni telefona gectim authenticator bos",   expect: ACC-002, max_rank: 2 }
+- { query: "ortak klasoru aciyorum izin hatasi veriyor", expect: ACC-003, max_rank: 2 }
+- { query: "faremin imleci hic kimildamıyor",          expect: PER-001, max_rank: 3 }

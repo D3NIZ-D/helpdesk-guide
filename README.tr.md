@@ -118,8 +118,8 @@ Her arıza karar ağacı hak etmez. Ağaç **belirsizliği daraltmak** için var
 | **`guide`** | Doğrusal kontrol listesi, 3–8 adım | 800–1.500 | 20–40 dk |
 | **`reference`** | Belirti → nedenler → çözüm, tek kart | 3.000–4.000 | 5–15 dk |
 
-Depoda 13 karar ağacı, 3 kontrol listesi ve 4 referans kartı var — tasarım
-dokümanındaki 20 kayıtlık v1 hedefi.
+Depoda 19 karar ağacı, 3 kontrol listesi ve 4 referans kartı var — tasarım
+dokümanındaki v1 içerik listesinin tamamı.
 
 Üçü de aynı arama havuzunu ve aynı şemayı paylaşır; yalnız yürütme biçimi
 farklıdır. Kartlar `related_runbook` ile ağaçlara bağlanır, böylece 5.000 kayıt
@@ -209,7 +209,7 @@ kişilerce sıralanmış listesi.**
 
 ```bash
 helpdesk eval
-# 110 queries · Recall@1 94.5% · Recall@3 100.0%
+# 141 queries · Recall@1 92.9% · Recall@3 100.0%
 ```
 
 `tests/golden_queries.yaml` gerçek ifadelerden oluşan bir regresyon setidir ve CI

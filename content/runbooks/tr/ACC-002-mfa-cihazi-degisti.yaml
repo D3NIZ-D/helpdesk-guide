@@ -1,0 +1,246 @@
+# Bu runbook bir kimlik doğrulama faktörünü sıfırlıyor. Sıfırlamadan önce
+# kimlik doğrulaması yapmak, sosyal mühendislikle hesap ele geçirmenin en
+# kolay yolunu kapatan tek adımdır — ve tam olarak atlanmaya en müsait adım
+# odur, çünkü arayan kişi acelesi olduğunu söyler.
+
+code: ACC-002
+tier: runbook
+title: "MFA cihazı değişti, giriş yapılamıyor"
+summary: "Çok faktörlü doğrulama kodu gelmiyor, kabul edilmiyor ya da kayıtlı cihaz artık kullanılamıyor."
+category: hesap/kimlik
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 90
+
+scope:
+  os: [windows, macos]
+  asset: [masaustu, laptop]
+
+tags: [mfa, 2fa, authenticator, kimlik, totp]
+
+aliases:
+  - { term: "mfa çalışmıyor",             kind: belirti, weight: 1.0 }
+  - { term: "doğrulama kodu gelmiyor",    kind: belirti, weight: 1.0 }
+  - { term: "telefonumu değiştirdim giremiyorum", kind: belirti, weight: 1.0 }
+  - { term: "authenticator uygulaması yeni telefonda yok", kind: belirti, weight: 1.0 }
+  - { term: "iki adımlı doğrulama takıldı", kind: belirti, weight: 1.0 }
+  - { term: "sms kodu ulaşmıyor",         kind: belirti, weight: 1.0 }
+  - { term: "kod kabul edilmiyor",        kind: belirti, weight: 1.0 }
+  - { term: "mfa not working",            kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Durum hangisi?"
+    body_md: |
+      Dört durum, dört ayrı işlem — ve biri acil bir güvenlik olayı.
+
+      Kullanıcıya sor: telefon **değişti mi**, **kayıp mı**, yoksa elinde mi
+      ama kod mu çalışmıyor? Bu üçü çok farklı şeyler.
+    est_seconds: 60
+    edges:
+      - { label: "Telefon değişti, uygulama yeni cihazda yok", to: N20 }
+      - { label: "Kod geliyor ama kabul edilmiyor",           to: N30 }
+      - { label: "Kod veya bildirim hiç gelmiyor",            to: N40 }
+      - { label: "Telefon çalındı veya kayboldu",             to: N90 }
+
+  # ── Cihaz değişti ─────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Önce kimliği doğrula, sonra MFA kaydını sıfırla"
+    body_md: |
+      **Kimlik doğrulaması olmadan MFA sıfırlanmaz.** Bir faktörü sıfırlamak,
+      o faktörün koruduğu her şeye kapı açmaktır; arayanın iddia ettiği kişi
+      olduğunu bilmeden bunu yapmak, saldırganın en çok istediği şeydir.
+
+      1. Kurumun kimlik doğrulama prosedürünü uygula — geri arama, yönetici
+         onayı veya yüz yüze. Acele baskısı bu adımı atlamanın gerekçesi değil,
+         tam tersine uyarı işaretidir.
+      2. Önce **yedek yöntem** var mı bak: ikinci bir kayıtlı cihaz, yedek
+         kodlar veya alternatif telefon. Varsa sıfırlamaya hiç gerek yok.
+      3. Yedek yoksa MFA kaydını sıfırla ve kullanıcıya **yeni cihazda
+         yeniden kayıt** yaptır. Kayıt tamamlandığını kendisi doğrulayana
+         kadar vakayı kapatma.
+      4. Yeni kayıt sırasında **yedek kodları üretip güvenli bir yere**
+         kaydetmesini sağla.
+    verify_text: "Kullanıcı yeni cihazla giriş yapabildi mi?"
+    risk: yuksek
+    requires_admin: true
+    rollback_md: |
+      MFA sıfırlaması **geri alınamaz**: eski cihazdaki kayıt kalıcı olarak
+      geçersizleşir ve kullanıcı yeniden kayıt yapmadan giremez.
+
+      Yanlış hesabın MFA'sı sıfırlandıysa: hesap sahibine hemen haber ver,
+      olayı güvenlik ekibine bildir ve işlemi bilete kaydet. Bu yüzden
+      hesap adını sıfırlamadan önce iki kez oku.
+    est_seconds: 900
+    edges:
+      - { label: "Yeniden kayıt yapıldı, giriş başarılı",     to: N21 }
+      - { label: "Yedek yöntem varmış, o kullanıldı",         to: N22 }
+      - { label: "Kimlik doğrulanamadı",                      to: N91 }
+      - { label: "Sıfırlandı ama yeniden kayıt yapılamıyor",  to: N92 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — MFA yeni cihaza yeniden kaydedildi"
+    root_cause: MFA_YENIDEN_KAYIT
+    closure_note: "Kimlik doğrulandı, MFA sıfırlandı ve yeni cihaza kaydedildi."
+    followup_md: |
+      Bilete **kimliği hangi yöntemle doğruladığını** yaz. Altı ay sonra
+      birisi "bu sıfırlamayı kim onayladı?" diye sorduğunda cevap bu olacak.
+
+      Kullanıcıya yedek kodlarını sakladığını teyit ettir; saklamadıysa bu
+      vaka telefon bir sonraki değişimde aynen tekrarlar.
+
+  - key: N22
+    type: cozum
+    title: "Çözüldü — kayıtlı yedek yöntem kullanıldı"
+    root_cause: MFA_YEDEK_YONTEM
+    closure_note: "Sıfırlamaya gerek kalmadı; kullanıcının ikinci bir kayıtlı yöntemi vardı."
+    followup_md: |
+      En iyi sonuç bu: hiçbir faktör sıfırlanmadı. Kullanıcıya yeni cihazını
+      da ikinci yöntem olarak kaydettir ki bir dahakine yine gerek kalmasın.
+
+  # ── Kod reddediliyor ──────────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Cihaz saatini ve doğru hesabı kontrol et"
+    body_md: |
+      Zaman tabanlı kodlar (TOTP) cihazın saatinden üretilir. Telefon saati
+      birkaç dakika kaymışsa üretilen her kod geçersiz olur ve belirti tam
+      olarak "kod kabul edilmiyor" şeklinde görünür.
+
+      1. Telefonun saat ayarını **otomatik** yaptır ve saati doğrula.
+      2. Authenticator uygulamasında birden çok hesap kayıtlıysa kullanıcının
+         **doğru hesabın** kodunu okuduğundan emin ol — iş ve kişisel hesap
+         yan yana durur, ikonları benzer.
+      3. Kodun süresi dolmadan girildiğini doğrula; okuyup yazarken 30 saniye
+         geçiyorsa yeni kodu beklet.
+      4. Uygulamanın kendi içindeki "zaman düzeltme" seçeneği varsa çalıştır.
+    verify_text: "Saat düzeltildikten sonra kod kabul edildi mi?"
+    est_seconds: 420
+    edges:
+      - { label: "Saat kaymıştı, düzeltilince kabul edildi",  to: N31 }
+      - { label: "Yanlış hesabın kodunu giriyormuş",          to: N32 }
+      - { label: "Saat doğru, doğru hesap, yine reddediliyor", to: N20 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — cihaz saati kaymıştı"
+    root_cause: MFA_SAAT_KAYMASI
+    closure_note: "TOTP kodları cihaz saatinden üretilir; saat kayınca kodlar geçersizleşiyordu."
+
+  - key: N32
+    type: cozum
+    title: "Çözüldü — yanlış hesabın kodu giriliyordu"
+    root_cause: MFA_YANLIS_HESAP
+    closure_note: "Authenticator'da birden çok kayıt vardı."
+    followup_md: "Kullanıcıya iş hesabının kaydını yeniden adlandırmasını öner."
+
+  # ── Kod hiç gelmiyor ──────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Bildirim kanalını doğrula"
+    body_md: |
+      "Gelmiyor" iki farklı şey olabilir: gönderilmiyor ya da telefona
+      ulaşmıyor.
+
+      1. **Kayıtlı numara/cihaz güncel mi?** Kullanıcı numarasını değiştirdiyse
+         kod eski numaraya gidiyordur.
+      2. Uygulama bildirimleri açık mı, telefon **rahatsız etmeyin** modunda mı?
+      3. Pil optimizasyonu authenticator uygulamasını arka planda durduruyor
+         olabilir — uygulamayı optimizasyon dışına aldır.
+      4. SMS kullanılıyorsa kapsama ve operatör engellemesini kontrol et;
+         kurumsal SMS kısa numaraları bazı hatlarda engellenir.
+      5. Uygulamayı elle açıp **kodu doğrudan okumayı** dene — bildirim
+         gelmese de kod üretilir.
+    verify_text: "Bildirim geldi mi, ya da uygulamadan kod okunabildi mi?"
+    est_seconds: 600
+    edges:
+      - { label: "Bildirim/kod geldi, giriş yapıldı",         to: N41 }
+      - { label: "Kayıtlı numara veya cihaz eski",            to: N20 }
+      - { label: "Hiçbiri işe yaramadı",                      to: N92 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — bildirim kanalı engelliydi"
+    root_cause: MFA_BILDIRIM
+    closure_note: "Bildirimler telefon ayarları nedeniyle ulaşmıyordu."
+    followup_md: |
+      Kullanıcıya uygulamayı açıp kodu doğrudan okuyabileceğini göster;
+      bildirime bağımlı kalmazsa aynı sorun tekrar etmez.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "GÜVENLİK OLAYI — kayıp veya çalınmış cihaz"
+    body_md: |
+      **Kayıp bir MFA cihazı bir güvenlik olayıdır, bir kullanıcı talebi
+      değil.** Normal sıfırlama akışına sokma; güvenlik ekibini bilgilendir.
+
+      Beklerken, yetkin dahilinde:
+
+      1. Kayıp cihazın MFA kaydını **devre dışı bırak** (sıfırlama değil,
+         iptal).
+      2. Kullanıcının **aktif oturumlarını kapat**.
+      3. Cihazda kurumsal e-posta veya dosya varsa **uzaktan silme**
+         gerekip gerekmediğini güvenlik ekibine sordur.
+      4. Parolanın da sıfırlanması gerekip gerekmediğini birlikte değerlendirin
+         — telefon kilitsizse parola da gitmiş sayılır.
+      5. Cihaz kaybolduktan sonra hesapta **şüpheli giriş** olup olmadığını
+         kontrol ettir.
+    escalate_to: "Guvenlik-Ekibi"
+    summary_template: |
+      ⚠ GÜVENLİK OLAYI — MFA CİHAZI KAYIP/ÇALINMIŞ
+
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}} — {{record_title}}
+      Bağlam: {{context}}
+
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Süre: {{duration_min}} dk
+
+      L1 tarafından teyit edilmeli:
+        [ ] Kayıp cihazın MFA kaydı devre dışı bırakıldı
+        [ ] Aktif oturumlar kapatıldı
+        [ ] Uzaktan silme ihtiyacı güvenlik ekibine soruldu
+        [ ] Şüpheli giriş kontrolü istendi
+
+      Gerekli bilgiler: cihazın kaybolduğu tarih/saat, cihazda kurumsal veri
+      olup olmadığı, telefonun kilitli olup olmadığı, kullanıcının kimliğinin
+      hangi yöntemle doğrulandığı.
+      {{closing}}
+
+  - key: N91
+    type: eskalasyon
+    title: "Kimlik doğrulanamadı — sıfırlama yapma"
+    body_md: |
+      Arayanın iddia ettiği kişi olduğu doğrulanamadı. **Hiçbir faktörü
+      sıfırlama.**
+
+      1. Kullanıcıya neden bekletildiğini sakin ve suçlayıcı olmadan açıkla.
+      2. Yüz yüze doğrulama veya yöneticisinden onay gibi alternatif bir yol öner.
+      3. Israr veya baskı varsa bunu bilete **yaz** ve güvenlik ekibine bildir —
+         baskı, sosyal mühendisliğin en yaygın işaretidir.
+
+      Bu adımda "hayır" demek, aracın var olma sebebidir.
+    escalate_to: "Guvenlik-Ekibi / Ekip-Yoneticisi"
+
+  - key: N92
+    type: eskalasyon
+    title: "Kimlik yönetimi ekibine eskale et"
+    body_md: |
+      L1 yetkisiyle çözülemedi. Özete **hangi adımların denendiğini**, kimliğin
+      doğrulanıp doğrulanmadığını ve MFA'nın sıfırlanıp sıfırlanmadığını
+      açıkça yaz.
+
+      Sıfırlama yapıldıysa mutlaka belirt — L2 aynı işlemi tekrarlamasın.
+    escalate_to: "L2-Kimlik"
+
+related: [ACC-001]

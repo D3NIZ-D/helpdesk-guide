@@ -46,7 +46,8 @@ faults:
     terms: [yazdırmıyor, çıktı almıyor, çıktı vermiyor, kuyrukta kalıyor,
             kuyruk takılıyor, kağıt sıkışması, kağıt çekmiyor, boş çıkıyor,
             soluk basıyor, çizgili basıyor, toner bitti, yazıcı bulunamıyor,
-            yazıcı eklenemiyor, çevrimdışı görünüyor]
+            yazıcı eklenemiyor, çevrimdışı görünüyor,
+            basmıyor, yazdıramıyorum, çıktı gelmiyor]
 
   IDENTITY:
     terms: [şifre kabul etmiyor, parola kabul etmiyor, hesap kilitli,

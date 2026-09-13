@@ -1,0 +1,278 @@
+code: DOC-001
+tier: runbook
+title: "Dock'a takınca ekran, USB veya ağ çalışmıyor"
+summary: "Yerleştirme istasyonu üzerinden bağlı aygıtların bir kısmı ya da tamamı çalışmıyor."
+category: donanim/dock
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows, macos]
+  asset: [laptop, dock]
+
+tags: [dock, usb-c, hub, firmware, dp-alt-mode]
+
+aliases:
+  - { term: "dock çalışmıyor",            kind: belirti, weight: 1.0 }
+  - { term: "dock'a takınca hiçbir şey olmuyor", kind: belirti, weight: 1.0 }
+  - { term: "docking station çalışmıyor", kind: belirti, weight: 1.0 }
+  - { term: "usb-c hub tanınmıyor",       kind: belirti, weight: 1.0 }
+  - { term: "dock üzerinden ekran gelmiyor", kind: belirti, weight: 1.0 }
+  - { term: "dock'taki usb portları ölü", kind: belirti, weight: 1.0 }
+  - { term: "yerleştirme istasyonu sorunu", kind: belirti, weight: 0.9 }
+  - { term: "docking station not working", kind: belirti, weight: 0.7 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Dock'ta tam olarak ne çalışmıyor?"
+    body_md: |
+      Neyin çalışmadığı, dock'un hangi katmanında sorun olduğunu söyler.
+      "Hiçbiri" ile "sadece ekran" iki ayrı arızadır.
+
+      Kullanıcıya dock'a bağlı **her şeyi tek tek** saydır: ekran, klavye,
+      mouse, ethernet, kulaklık, şarj.
+    est_seconds: 90
+    edges:
+      - { label: "Hiçbiri — ekran, USB, ağ hepsi ölü",        to: N20 }
+      - { label: "Sadece ekran çalışmıyor",                   to: N40 }
+      - { label: "Sadece USB aygıtları çalışmıyor",           to: N50 }
+      - { label: "Sadece ethernet çalışmıyor",                to: N60 }
+
+  # ── Dock tamamen ölü ──────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Dock'a güç çevrimi yaptır"
+    body_md: |
+      Dock'lar takılı kalır; çoğu vaka burada biter.
+
+      1. Laptop'u dock'tan ayır.
+      2. Dock'un **kendi güç adaptörünü** prizden çek, **30 saniye bekle**,
+         tekrar tak. Bu bekleme önemli, kısaltma.
+      3. Dock'un güç/durum ışığı yanıyor mu kontrol et.
+      4. Laptop'u tekrar tak.
+    verify_text: "Dock'un durum ışığı yanıyor mu ve aygıtlardan biri canlandı mı?"
+    est_seconds: 240
+    edges:
+      - { label: "Dock canlandı, her şey çalışıyor",          to: N21 }
+      - { label: "Hâlâ hiçbir şey yok",                       to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — dock takılı kalmıştı, güç çevrimi yeterli oldu"
+    root_cause: DOCK_GUC_CEVRIMI
+    closure_note: "Dock yanıt vermez hale gelmişti; güç çevrimi sıfırladı."
+    followup_md: |
+      Aynı dock haftada bir kilitleniyorsa bu bir firmware vakasıdır, günlük
+      bir çözüm değil. Tekrar sayısını not al ve firmware güncellemesi planla.
+
+  - key: N30
+    type: talimat
+    title: "Bağlantı kablosunu ve laptop portunu doğrula"
+    body_md: |
+      USB-C kabloları dışarıdan aynı görünür ama farklı şeyler taşır.
+
+      1. Dock kablosunu **laptop'un diğer USB-C portuna** tak. Her port
+         video ve güç taşımaz; üzerinde şimşek veya DP simgesi olanı ara.
+      2. **Dock ile birlikte gelen kabloyu** kullan. Telefon şarj kablosu
+         görüntü taşımaz ve bunu hiçbir yerde yazmaz.
+      3. Kabloyu iki uçtan da çıkar, tak; ucunda toz veya eğrilik var mı bak.
+      4. Mümkünse çalıştığı bilinen başka bir dock kablosuyla dene.
+    verify_text: "Hangi port veya kablo kombinasyonunda dock canlandı?"
+    est_seconds: 420
+    edges:
+      - { label: "Farklı kabloyla çalıştı",                   to: N31 }
+      - { label: "Laptop'un diğer portunda çalıştı",          to: N32 }
+      - { label: "Hiçbir kombinasyon işe yaramadı",           to: N70 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — kablo video veya güç taşımıyordu"
+    root_cause: DOCK_KABLO
+    closure_note: "Kullanılan USB-C kablosu dock için yetersizdi."
+    part_required: usb_c_dock_kablosu
+    followup_md: |
+      Kullanıcıya hangi kablonun doğru olduğunu **göster ve etiketle**.
+      Yanlış kablo çekmecede kaldığı sürece aynı vaka geri gelir.
+
+  - key: N32
+    type: cozum
+    title: "Çözüldü — laptop'un yanlış USB-C portu kullanılıyordu"
+    root_cause: DOCK_PORT
+    closure_note: "Kullanılan port video veya güç sağlamıyordu."
+    followup_md: "Doğru portu etiketle; kullanıcı bilmediği sürece yine yanlışına takacak."
+
+  # ── Sadece ekran ──────────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Dock üzerinden video çıkışını izole et"
+    body_md: |
+      1. Monitörü dock yerine **doğrudan laptop'a** bağla. Bu tek test,
+         sorunun dock'ta mı monitörde mi olduğunu kesin söyler.
+      2. Dock'un **kaç ekran desteklediğini** kontrol et. İki ekran bağlıysa
+         ve dock tekini destekliyorsa ikincisi hiç çalışmaz.
+      3. `Win + P` ile görüntüleme modunu **Genişlet** yap.
+      4. Dock'un farklı bir video portunu (HDMI yerine DP) dene.
+    verify_text: "Doğrudan bağlantıda monitör çalışıyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Doğrudan çalışıyor, dock üzerinden çalışmıyor", to: N70 }
+      - { label: "Doğrudan da çalışmıyor",                    to: N91 }
+      - { label: "Dock'un desteklediği ekran sayısı aşılmış", to: N41 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — dock'un ekran sayısı sınırı aşılmış"
+    root_cause: DOCK_EKRAN_LIMITI
+    closure_note: "Dock bağlanan ekran sayısını veya çözünürlüğünü desteklemiyor."
+    followup_md: |
+      Bu bir arıza değil, bir kapasite sınırı. Kullanıcı gerçekten iki ekrana
+      ihtiyaç duyuyorsa daha yüksek modelli dock talebi aç; aksi halde aynı
+      konuşma her ay tekrar eder.
+
+  # ── Sadece USB ────────────────────────────────────────────────────
+  - key: N50
+    type: talimat
+    title: "USB aygıtlarını ve güç bütçesini kontrol et"
+    body_md: |
+      Dock'un USB portları ortak bir güç bütçesi paylaşır; harici disk gibi
+      aç bir aygıt diğerlerini sessizce düşürebilir.
+
+      1. Bağlı **tüm** USB aygıtlarını çıkar, sadece birini tak, dene.
+      2. Harici disk veya şarj olan bir aygıt varsa onu **doğrudan laptop'a** al.
+      3. Sorunlu aygıtı dock'un başka bir portuna tak.
+      4. Aynı aygıtı doğrudan laptop'a takarak aygıtı ele.
+    verify_text: "Aygıtlar teker teker takıldığında hangisi çalışıyor?"
+    est_seconds: 420
+    edges:
+      - { label: "Aygıtlar teker teker çalışıyor, hepsi birden çalışmıyor", to: N51 }
+      - { label: "Tek bir aygıt hiçbir yerde çalışmıyor",     to: N92 }
+      - { label: "Dock'ta hiçbiri, doğrudan hepsi çalışıyor", to: N70 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — dock'un USB güç bütçesi aşılmış"
+    root_cause: DOCK_GUC_BUTCESI
+    closure_note: "Bağlı aygıtlar dock'un sağlayabileceğinden fazla güç çekiyordu."
+    followup_md: |
+      Harici diskler ve şarj olan aygıtlar doğrudan laptop'a veya kendi
+      adaptörüne bağlanmalı. Kullanıcıya hangi aygıtı nereye takacağını söyle.
+
+  # ── Sadece ethernet ───────────────────────────────────────────────
+  - key: N60
+    type: talimat
+    title: "Dock'un ethernet adaptörünü kontrol et"
+    body_md: |
+      1. Dock üzerindeki ağ portunun **link ışığına** bak; yanmıyorsa kablo
+         veya priz tarafına bak.
+      2. `Aygıt Yöneticisi → Ağ bağdaştırıcıları` altında dock'un ethernet
+         adaptörü görünüyor mu?
+      3. Kabloyu **doğrudan laptop'un ethernet portuna** (varsa) veya başka
+         bir prize tak.
+      4. Dock'un MAC adres geçişi (MAC address pass-through) ayarı varsa,
+         ağ ilkesi buna takılıyor olabilir — not al.
+    verify_text: "Ethernet adaptörü listede görünüyor ve bağlantı kuruluyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Ethernet geri geldi",                       to: N61 }
+      - { label: "Adaptör görünmüyor",                        to: N70 }
+      - { label: "Adaptör var ama ağ yok",                    to: N93 }
+
+  - key: N61
+    type: cozum
+    title: "Çözüldü — dock ethernet bağlantısı"
+    root_cause: DOCK_ETHERNET
+    closure_note: "Dock'un ağ adaptörü veya kablo bağlantısı sorunluydu."
+
+  # ── Firmware ──────────────────────────────────────────────────────
+  - key: N70
+    type: talimat
+    title: "Dock firmware ve sürücülerini güncelle"
+    body_md: |
+      Dock firmware'i gözden kaçan bir bakım kalemidir; laptop güncellendikçe
+      eski firmware uyumsuz hale gelir.
+
+      1. Üreticinin dock yardımcı programını indir (Dell, HP, Lenovo ve
+         Targus'un kendi araçları var).
+      2. Güncelleme sırasında **laptop dock'a takılı ve dock fişte** olmalı.
+      3. Güncelleme birkaç dakika sürer ve dock bu sırada birkaç kez
+         bağlantıyı keser — bu normaldir.
+      4. Bitince laptop'u ayır, dock'a güç çevrimi yap, tekrar tak.
+    verify_text: "Firmware güncellendikten sonra eksik olan işlev geri geldi mi?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      **Firmware güncellemesini yarıda kesme.** Güç kesilirse dock
+      kullanılamaz hale gelebilir ve çoğu modelde geri dönüşü yoktur.
+
+      Başlamadan önce: dock fişte mi, laptop şarjda mı, kullanıcı 10 dakika
+      boyunca cihaza ihtiyaç duymayacak mı — üçünü de doğrula.
+
+      Güncelleme sonrası dock tanınmazsa 60 saniye güç çevrimi yap; çoğu
+      model ilk açılışta kendini toparlar.
+    est_seconds: 1800
+    edges:
+      - { label: "Düzeldi",                                   to: N71 }
+      - { label: "Düzelmedi",                                 to: N94 }
+
+  - key: N71
+    type: cozum
+    title: "Çözüldü — dock firmware'i eskiydi"
+    root_cause: DOCK_FIRMWARE
+    closure_note: "Firmware güncellemesi dock işlevlerini geri getirdi."
+    followup_md: |
+      Aynı model dock'ta ikinci kez çıkarsa tek tek çözmeyi bırak: filo
+      genelinde firmware dağıtımı planla. Üç vaka, bir toplu güncellemeden
+      daha pahalıdır.
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N91
+    type: eskalasyon
+    title: "Bu bir dock sorunu değil — DSP-001 ile devam et"
+    body_md: |
+      Monitör doğrudan bağlandığında da görüntü vermiyor. Dock'u aradan
+      çıkardık ve sorun devam ediyor.
+
+      Bu runbook'u kapat ve **DSP-001 Monitörde görüntü yok** ile devam et.
+    escalate_to: "DSP-001"
+
+  - key: N92
+    type: eskalasyon
+    title: "Bu bir dock sorunu değil — PER-001 ile devam et"
+    body_md: |
+      Tek bir aygıt hiçbir yerde çalışmıyor; dock'un bununla ilgisi yok.
+
+      Bu runbook'u kapat ve **PER-001 Klavye, mouse veya USB aygıtı
+      tanınmıyor** ile devam et.
+    escalate_to: "PER-001"
+
+  - key: N93
+    type: eskalasyon
+    title: "Bu bir ağ sorunu — NET-001 ile devam et"
+    body_md: |
+      Ethernet adaptörü işletim sisteminde görünüyor ama bağlantı kurulmuyor.
+      Sorun dock donanımında değil, ağ katmanında.
+
+      Bu runbook'u kapat ve **NET-001 İnternete bağlanamıyor** ile devam et.
+    escalate_to: "NET-001"
+
+  - key: N94
+    type: eskalasyon
+    title: "L2 / donanım servisine eskale et"
+    body_md: |
+      Güç çevrimi, kablo, port ve firmware elendi. Dock donanım arızası
+      olasılığı yüksek.
+
+      Özete **dock modelini, firmware sürümünü ve hangi işlevlerin
+      çalışmadığını** ekle. Aynı model başka kullanıcılarda da sorun
+      çıkarıyorsa bunu da yaz — tekil arıza ile parti arızası farklı ele alınır.
+    escalate_to: "L2-Donanim"
+
+related: [DSP-001, DSP-002, PER-001]

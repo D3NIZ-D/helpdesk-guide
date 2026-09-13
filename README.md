@@ -257,7 +257,7 @@ regression suite of real phrasings:
 
 ```bash
 helpdesk eval
-# 110 queries · Recall@1 94.5% · Recall@3 100.0%
+# 141 queries · Recall@1 92.9% · Recall@3 100.0%
 ```
 
 CI runs it on every content change, so adding a runbook that breaks an older
