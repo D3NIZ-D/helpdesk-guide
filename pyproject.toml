@@ -51,10 +51,10 @@ dev = [
 helpdesk = "helpdesk.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/OWNER/helpdesk-guide"
-Documentation = "https://github.com/OWNER/helpdesk-guide#readme"
-Issues = "https://github.com/OWNER/helpdesk-guide/issues"
-Changelog = "https://github.com/OWNER/helpdesk-guide/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/D3NIZ-D/helpdesk-guide"
+Documentation = "https://github.com/D3NIZ-D/helpdesk-guide#readme"
+Issues = "https://github.com/D3NIZ-D/helpdesk-guide/issues"
+Changelog = "https://github.com/D3NIZ-D/helpdesk-guide/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/helpdesk"]

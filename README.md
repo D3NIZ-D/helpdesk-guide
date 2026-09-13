@@ -10,8 +10,8 @@ summary somebody can actually act on.
 Everything runs locally. No cloud, no account, no network call. IT support is
 needed most at exactly the moment the network is down.
 
-[![CI](https://github.com/OWNER/helpdesk-guide/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/helpdesk-guide/actions/workflows/ci.yml)
-[![Content](https://github.com/OWNER/helpdesk-guide/actions/workflows/content-check.yml/badge.svg)](https://github.com/OWNER/helpdesk-guide/actions/workflows/content-check.yml)
+[![CI](https://github.com/D3NIZ-D/helpdesk-guide/actions/workflows/ci.yml/badge.svg)](https://github.com/D3NIZ-D/helpdesk-guide/actions/workflows/ci.yml)
+[![Content](https://github.com/D3NIZ-D/helpdesk-guide/actions/workflows/content-check.yml/badge.svg)](https://github.com/D3NIZ-D/helpdesk-guide/actions/workflows/content-check.yml)
 [![Engine: MIT](https://img.shields.io/badge/engine-MIT-blue.svg)](LICENSE)
 [![Content: CC BY-SA 4.0](https://img.shields.io/badge/content-CC%20BY--SA%204.0-lightgrey.svg)](content/LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -29,7 +29,7 @@ helpdesk serve            # opens http://127.0.0.1:8756 in your browser
 Or from a checkout, with nothing but Python:
 
 ```bash
-git clone https://github.com/OWNER/helpdesk-guide && cd helpdesk-guide
+git clone https://github.com/D3NIZ-D/helpdesk-guide && cd helpdesk-guide
 pip install -e ".[web,dev]"
 helpdesk compile && helpdesk serve
 ```

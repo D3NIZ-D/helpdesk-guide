@@ -126,5 +126,5 @@ First working release. Engine, both front ends, and the seed content.
   by surrounding prose.
 - Local-only telemetry with configurable retention.
 
-[Unreleased]: https://github.com/OWNER/helpdesk-guide/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/OWNER/helpdesk-guide/releases/tag/v0.1.0
+[Unreleased]: https://github.com/D3NIZ-D/helpdesk-guide/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/D3NIZ-D/helpdesk-guide/releases/tag/v0.1.0

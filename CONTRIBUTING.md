@@ -11,7 +11,7 @@ more than code in this project, and that guide assumes no programming.
 ## Setting up
 
 ```bash
-git clone https://github.com/OWNER/helpdesk-guide && cd helpdesk-guide
+git clone https://github.com/D3NIZ-D/helpdesk-guide && cd helpdesk-guide
 python -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e ".[web,dev]"
 

@@ -10,7 +10,7 @@ kadar.
 Her şey yerelde çalışır. Bulut yok, hesap yok, ağ isteği yok. IT desteğe en çok
 ihtiyaç duyulan an, zaten ağın çöktüğü andır.
 
-[![CI](https://github.com/OWNER/helpdesk-guide/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/helpdesk-guide/actions/workflows/ci.yml)
+[![CI](https://github.com/D3NIZ-D/helpdesk-guide/actions/workflows/ci.yml/badge.svg)](https://github.com/D3NIZ-D/helpdesk-guide/actions/workflows/ci.yml)
 [![Motor: MIT](https://img.shields.io/badge/motor-MIT-blue.svg)](LICENSE)
 [![İçerik: CC BY-SA 4.0](https://img.shields.io/badge/i%C3%A7erik-CC%20BY--SA%204.0-lightgrey.svg)](content/LICENSE)
 
@@ -27,7 +27,7 @@ helpdesk serve            # tarayıcıda http://127.0.0.1:8756 açılır
 Depodan kurmak istersen:
 
 ```bash
-git clone https://github.com/OWNER/helpdesk-guide && cd helpdesk-guide
+git clone https://github.com/D3NIZ-D/helpdesk-guide && cd helpdesk-guide
 pip install -e ".[web,dev]"
 helpdesk compile && helpdesk serve
 ```

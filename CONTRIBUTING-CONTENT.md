@@ -13,7 +13,7 @@ olarak bunun için var.
 ## En hızlı başlangıç
 
 ```bash
-git clone https://github.com/OWNER/helpdesk-guide && cd helpdesk-guide
+git clone https://github.com/D3NIZ-D/helpdesk-guide && cd helpdesk-guide
 pip install -e ".[dev]"
 
 helpdesk new --tier guide --code NET-020   # iskelet üretir

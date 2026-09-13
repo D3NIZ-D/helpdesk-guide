@@ -6,7 +6,7 @@
 
 Report it privately through GitHub Security Advisories:
 
-<https://github.com/OWNER/helpdesk-guide/security/advisories/new>
+<https://github.com/D3NIZ-D/helpdesk-guide/security/advisories/new>
 
 Include what you can: affected version (`helpdesk --version`), how to
 reproduce, and what an attacker gains. A proof of concept helps but is not
