@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>{% block title %}{{ t.app_name or "helpdesk-guide" }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛠</text></svg>">
+</head>
+<body>
+  <a class="skip-link" href="#main">{{ t.skip_to_content or "İçeriğe atla" }}</a>
+
+  <header class="topbar">
+    <a class="brand" href="/" accesskey="h">
+      <span class="brand-mark">🛠</span>
+      <span class="brand-name">helpdesk<span class="dim">-guide</span></span>
+    </a>
+    <nav class="topnav">
+      <a href="/browse">{{ t.nav_browse or "Gözat" }}</a>
+      <a href="/reports">{{ t.nav_reports or "Raporlar" }}</a>
+      <button type="button" class="ghost" id="theme-toggle"
+              title="{{ t.toggle_theme or 'Temayı değiştir' }}" aria-label="{{ t.toggle_theme or 'Temayı değiştir' }}">◐</button>
+    </nav>
+  </header>
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <span>helpdesk-guide {{ version }}</span>
+    <span class="dim">{{ t.offline_note or "Tüm veriler bu makinede kalır." }}</span>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

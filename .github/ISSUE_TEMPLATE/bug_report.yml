@@ -1,0 +1,43 @@
+name: "🐛 Yazılım hatası / Bug report"
+description: "Motor, arama veya arayüz beklendiği gibi çalışmıyor."
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: "Ne oldu? / What happened?"
+    validations: { required: true }
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "Ne olmasını bekliyordun? / What did you expect?"
+    validations: { required: true }
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: "Nasıl tekrarlanır? / How to reproduce"
+      placeholder: |
+        1. helpdesk compile
+        2. helpdesk search "..."
+        3. ...
+      render: shell
+    validations: { required: true }
+
+  - type: textarea
+    id: env
+    attributes:
+      label: "Ortam / Environment"
+      description: "`helpdesk stats` çıktısını yapıştırabilirsin."
+      render: shell
+    validations: { required: true }
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Kontrol
+      options:
+        - label: "Yapıştırdığım çıktıda parola, token veya iç sunucu adı yok."
+          required: true

@@ -1,0 +1,46 @@
+name: "⚠️ İçerik hatası / Content error"
+description: "Bir adım yanlış, eksik veya artık geçerli değil."
+title: "[içerik] "
+labels: ["content", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Yanlış bir adım, hiç adım olmamasından kötüdür — teknisyen uygular,
+        arıza büyür, bir daha araca güvenilmez. Bunu bildirmek en değerli
+        katkılardan biri.
+
+  - type: input
+    id: code
+    attributes:
+      label: "Kayıt kodu / Record code"
+      placeholder: "DSP-001"
+    validations: { required: true }
+
+  - type: input
+    id: node
+    attributes:
+      label: "Düğüm veya adım / Node or step"
+      description: "Arayüzde adımın yanında görünür (N52 gibi)."
+      placeholder: "N52"
+
+  - type: textarea
+    id: wrong
+    attributes:
+      label: "Ne yanlış? / What is wrong?"
+    validations: { required: true }
+
+  - type: textarea
+    id: correct
+    attributes:
+      label: "Doğrusu ne olmalı? / What should it say?"
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "Zarar verir mi? / Can it cause harm?"
+      options:
+        - "Hayır, sadece işe yaramıyor"
+        - "Evet, zaman kaybettiriyor"
+        - "EVET, veri kaybına veya arızanın büyümesine yol açabilir"
+    validations: { required: true }

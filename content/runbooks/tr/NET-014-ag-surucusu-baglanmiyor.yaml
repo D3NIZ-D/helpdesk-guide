@@ -1,0 +1,62 @@
+code: NET-014
+tier: guide
+title: "Ağ sürücüsü (mapped drive) açılışta bağlanmıyor"
+summary: "Eşlenmiş ağ sürücüsü kırmızı çarpıyla görünüyor veya hiç yok."
+category: ag/paylasim
+severity: dusuk
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 540
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [ag, paylasim, mapped-drive]
+
+aliases:
+  - { term: "ağ sürücüsü kayboldu",        kind: belirti, weight: 1.0 }
+  - { term: "mapped drive bağlanmıyor",    kind: belirti, weight: 1.0 }
+  - { term: "kırmızı çarpı ağ sürücüsü",   kind: belirti, weight: 1.0 }
+  - { term: "paylaşılan klasöre erişemiyorum", kind: belirti, weight: 0.9 }
+  - { term: "ortak klasör açılmıyor",      kind: belirti, weight: 0.9 }
+
+steps:
+  - title: "Sürücüye çift tıklayarak yeniden bağlanmayı dene"
+    note: >
+      Windows ağ sürücülerini tembel bağlar: kırmızı çarpı çoğu zaman
+      "henüz bağlanmadım" demektir, "bağlanamıyorum" değil. Vakaların
+      yarısı burada biter.
+    est_seconds: 30
+
+  - title: "Kimlik bilgisi Credential Manager'da geçerli mi kontrol et"
+    note: >
+      Parola değiştiyse burada eskisi kalmış olabilir. Kurumsal kayıtları
+      sil, sürücüye tekrar bağlanırken kimlik bilgisini yeniden girdir.
+      Bu aynı zamanda hesap kilitlenmesinin de en sık sebebidir (ACC-001).
+    est_seconds: 120
+
+  - title: "Sunucuya erişimi doğrula"
+    note: >
+      Çalıştır kutusuna UNC yolunu yaz (\sunucu\paylasim). Açılıyorsa
+      sorun eşlemede, açılmıyorsa ağda veya yetkide.
+    est_seconds: 60
+
+  - title: "Grup ilkesiyle mi dağıtılıyor, elle mi eklenmiş belirle"
+    note: >
+      `gpresult /r` çıktısında sürücü eşleme ilkesini ara. İlkeyle geliyorsa
+      elle eklemek işe yaramaz; ilke uygulanmama sebebini bulmak gerekir.
+    requires_admin: true
+    est_seconds: 180
+
+  - title: "Hızlı başlatmayı kapat ve tam kapatma yaptır"
+    note: >
+      Hızlı başlatma açıkken Windows gerçekten kapanmaz; ağ oturumu eski
+      haliyle geri yüklenir ve eşleme kurulamaz.
+    requires_admin: true
+    est_seconds: 180
+
+related_runbook: NET-001
+related: [ACC-001]

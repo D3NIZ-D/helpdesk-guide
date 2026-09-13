@@ -1,0 +1,109 @@
+# ─────────────────────────────────────────────────────────────────────
+# T1 RUNBOOK — branching decision tree
+#
+# Use this tier when the symptom points at several different root causes
+# and the questions are what tell them apart.  If there is nothing to
+# branch on, use _TEMPLATE.guide.yaml (a checklist) or
+# _TEMPLATE.reference.yaml (a single card) instead -- a linear fault
+# forced into a tree just slows the technician down.
+#
+# Scaffold one with:  helpdesk new --tier runbook --code DSP-002
+# Check it with:      helpdesk lint  &&  helpdesk tree <file>
+# Walk it with:       helpdesk compile --allow-drafts && helpdesk run DSP-002
+#
+# Definition of done (design doc section 20.3) is in
+# CONTRIBUTING-CONTENT.md. The short version: at least 3 aliases, every
+# instruction has verify_text, every branch ends in a resolution or an
+# escalation, longest path <= 7 steps, and somebody other than the author
+# has walked it end to end.
+# ─────────────────────────────────────────────────────────────────────
+
+code: XXX-000
+tier: runbook
+title: "REPLACE_TITLE"
+summary: "One sentence a technician can recognise on a phone call."
+category: REPLACE_CATEGORY          # e.g. donanim/goruntu, ag/vpn, yazici
+severity: orta                      # dusuk | orta | yuksek | kritik
+status: taslak                      # taslak until somebody else has walked it
+verification: taslak                # taslak -> incelendi -> dogrulanmis
+author: "REPLACE_AUTHOR"
+reviewed_at: REPLACE_DATE
+review_period_days: 180
+
+scope:
+  os: [windows, macos, linux]
+  asset: [masaustu, laptop]
+
+tags: []
+
+# ── Aliases ──────────────────────────────────────────────────────────
+# How a user actually describes this, not how you would describe it.
+# Include the wrong words people use and the English term.  You do NOT
+# need a diacritic-free copy of each one: the normaliser folds "monitör"
+# and "monitor" onto the same key, and a duplicate is reported as one.
+# Aliases are cheaper than clever search -- five good ones beat any stemmer.
+aliases:
+  - { term: "belirtiyi kullanıcı ağzından yaz", kind: belirti, weight: 1.0 }
+  - { term: "kullanıcının kullandığı yanlış kelime", kind: belirti, weight: 0.9 }
+  - { term: "english phrasing",                 kind: belirti, weight: 0.8 }
+
+# Optional: a question that separates this record from records it is
+# routinely confused with (design doc section 8.5).
+# disambiguation:
+#   - question: "Kasadan fan sesi / ışık geliyor mu?"
+#     options:
+#       - { answer: "Hayır, hiç tepki yok",        to: PWR-001 }
+#       - { answer: "Evet ama ekran yok",          to: DSP-001 }
+
+entry: N10
+
+nodes:
+  # ── question: gathers information, must have >= 2 edges ────────────
+  - key: N10
+    type: soru
+    title: "Ayırt edici ilk soru?"
+    body_md: |
+      Teknisyenin kullanıcıya ne soracağını ve **neye bakacağını** yaz.
+      Tek bir gözlem iste; iki şeyi aynı anda sorma.
+    est_seconds: 20
+    edges:
+      - { label: "Birinci cevap", to: N20 }
+      - { label: "İkinci cevap",  to: N90 }
+
+  # ── instruction: an action plus its verification ───────────────────
+  - key: N20
+    type: talimat
+    title: "Tek bir eylem"
+    body_md: |
+      1. Numaralı, tek tek yapılacak adımlar.
+      2. "Kabloyu kontrol et ve sürücüyü güncelle" iki düğümdür, bir değil.
+    verify_text: "Nasıl anlarsın: gözle görülür bir sonuç yaz"
+    risk: dusuk                      # yuksek ise rollback_md zorunlu
+    # requires_admin: true
+    # requires_user_downtime: true
+    # rollback_md: "Nasıl geri alınır"
+    est_seconds: 90
+    edges:
+      - { label: "Düzeldi",   to: N21 }
+      - { label: "Düzelmedi", to: N90 }
+
+  # ── resolution: terminal, needs a root_cause ───────────────────────
+  - key: N21
+    type: cozum
+    title: "Çözüldü — kısa sebep"
+    root_cause: ROOT_CAUSE_KODU      # raporlama buna dayanıyor, UPPER_SNAKE
+    closure_note: "Ne olmuştu, tek cümle."
+    # part_required: parca_kodu
+    # followup_md: "Kullanıcıya 24 saat sonra dön."
+
+  # ── escalation: terminal, hands over with a summary ────────────────
+  - key: N90
+    type: eskalasyon
+    title: "L2'ye eskale et"
+    body_md: |
+      Yerinde çözülemedi. Aşağıdaki özeti vakaya ekle.
+    escalate_to: "L2-Donanim"
+    # summary_template: |          # boş bırakılırsa varsayılan şablon kullanılır
+    #   Belirti: {{query_raw}}
+    #   {{#each steps}}- {{title}} → {{answer}}
+    #   {{/each}}

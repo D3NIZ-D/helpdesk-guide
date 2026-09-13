@@ -1,0 +1,42 @@
+Content licence — Creative Commons Attribution-ShareAlike 4.0 International
+==========================================================================
+
+Everything under `content/` in this repository — runbooks, guides,
+reference cards, the lexicon and the media files — is licensed under
+CC BY-SA 4.0, NOT under the MIT licence that covers the engine in `src/`.
+
+    https://creativecommons.org/licenses/by-sa/4.0/
+
+Why the split (design doc section 19.2)
+---------------------------------------
+Runbooks are documentation, not software. ShareAlike means that when
+somebody improves a troubleshooting tree — adds the branch you missed,
+corrects a step that no longer matches Windows 11 — that improvement
+stays available to everyone who relies on it. Operational knowledge gets
+better by circulating; the engine gets adopted by being frictionless.
+Two licences, two goals.
+
+You are free to:
+  Share  — copy and redistribute the material in any medium or format
+  Adapt  — remix, transform, and build upon the material for any purpose,
+           including commercially
+
+Under the following terms:
+  Attribution — credit the helpdesk-guide project and link to the licence.
+  ShareAlike  — distribute your contributions under the same licence.
+
+Contributing content
+--------------------
+By submitting content to `content/`, you agree to license it under
+CC BY-SA 4.0, and you confirm that:
+
+  * you wrote it, or it came from a CC BY-SA-compatible source that you
+    have credited in the record's `source:` block;
+  * it contains no vendor documentation copied verbatim — see section 22.6
+    of the design document: cite and link, write the summary yourself;
+  * it contains no passwords, tokens, licence keys or internal hostnames.
+    The compiler enforces this, but the compiler is the second line of
+    defence, not the first.
+
+Site-specific content belongs in `content-local/`, which is git-ignored
+and never published.

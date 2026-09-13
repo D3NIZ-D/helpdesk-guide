@@ -1,0 +1,200 @@
+code: PRN-001
+tier: runbook
+title: "Yazıcı çıktı vermiyor / iş kuyrukta kalıyor"
+summary: "Yazdırma işi gönderiliyor ama kâğıt çıkmıyor; iş kuyrukta bekliyor."
+category: yazici/cikti
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [yazici, kuyruk, spooler]
+
+aliases:
+  - { term: "yazıcı çıktı vermiyor",   kind: belirti, weight: 1.0 }
+  - { term: "yazıcı yazdırmıyor",      kind: belirti, weight: 1.0 }
+  - { term: "çıktı alamıyorum",        kind: belirti, weight: 1.0 }
+  - { term: "iş kuyrukta kalıyor",     kind: belirti, weight: 1.0 }
+  - { term: "yazdırma kuyruğu takıldı", kind: belirti, weight: 1.0 }
+  - { term: "yazıcı çevrimdışı",       kind: hata_kodu, weight: 1.1 }
+  - { term: "printer offline",         kind: hata_kodu, weight: 1.1 }
+  - { term: "kağıt çıkmıyor",          kind: belirti, weight: 0.9 }
+  - { term: "yazıcı duruyor",          kind: belirti, weight: 0.8 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Bu yazıcıdan başka kullanıcılar çıktı alabiliyor mu?"
+    body_md: |
+      Bu ilk soru, aramayı ikiye böler ve 10 dakika kazandırır: sorun
+      tek kullanıcıda mı, yazıcıda mı?
+
+      Aynı kattan bir kişiye test sayfası gönderttir.
+    est_seconds: 60
+    edges:
+      - { label: "Evet, başkaları alabiliyor (sorun tek kullanıcıda)", to: N20 }
+      - { label: "Hayır, kimse alamıyor (sorun yazıcıda)",             to: N50 }
+      - { label: "Bilinmiyor / tek kullanıcılı yazıcı",                to: N20 }
+
+  # ── İstemci kolu ──────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Yazıcının durumunu ve kuyruğu temizle"
+    body_md: |
+      1. Ayarlar → Bluetooth ve cihazlar → Yazıcılar → yazıcıyı aç.
+      2. **"Yazıcıyı çevrimdışı kullan"** işaretliyse kaldır.
+      3. **"Yazdırmayı duraklat"** işaretliyse kaldır.
+      4. Kuyruktaki **tüm işleri iptal et** — takılı bir iş arkasındaki
+         her şeyi bloke eder.
+      5. Yazıcı varsayılan olarak ayarlı mı kontrol et; Windows'un
+         "varsayılan yazıcıyı yönetmesine izin ver" seçeneği yazıcıyı
+         habersiz değiştirir.
+    verify_text: "Test sayfası yazdırıldı mı?"
+    est_seconds: 180
+    edges:
+      - { label: "Çıktı geldi",                to: N21 }
+      - { label: "İş yine kuyrukta takılıyor", to: N30 }
+      - { label: "Yazıcı hâlâ çevrimdışı görünüyor", to: N40 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — duraklatılmış kuyruk veya çevrimdışı işareti"
+    root_cause: KUYRUK_DURAKLATILDI
+    closure_note: "Yazıcı duraklatılmıştı ya da takılı bir iş kuyruğu bloke ediyordu."
+
+  - key: N30
+    type: talimat
+    title: "Yazdırma biriktiricisini (spooler) sıfırla"
+    body_md: |
+      Yönetici komut isteminde:
+
+      ```
+      net stop spooler
+      del /Q /F %systemroot%\System32\spool\PRINTERS\*.*
+      net start spooler
+      ```
+
+      Bu, bekleyen **tüm** yazdırma işlerini siler — sadece bu kullanıcının
+      değil, makinedeki herkesin. Paylaşılan bir makinede önce haber ver.
+    verify_text: "Spooler yeniden başladıktan sonra test sayfası çıktı mı?"
+    risk: orta
+    requires_admin: true
+    rollback_md: |
+      Silinen yazdırma işleri geri alınamaz; kullanıcıların belgeyi
+      yeniden göndermesi gerekir. Spooler servisi başlamazsa
+      `services.msc` → Print Spooler → Başlangıç türü **Otomatik**
+      olduğunu doğrula ve elle başlat.
+    est_seconds: 300
+    edges:
+      - { label: "Çıktı geldi",   to: N31 }
+      - { label: "Hâlâ çıkmıyor", to: N40 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — bozuk yazdırma kuyruğu / spooler"
+    root_cause: SPOOLER_BOZUK
+    closure_note: "Biriktiricide bozuk bir iş kalmıştı."
+
+  - key: N40
+    type: talimat
+    title: "Yazıcıyı kaldır ve doğru sürücüyle yeniden ekle"
+    body_md: |
+      1. Yazıcıyı kaldır (Ayarlar → Yazıcılar → Kaldır).
+      2. `printmanagement.msc` → Tüm Sürücüler → eski sürücüyü de sil.
+      3. Yazıcıyı yeniden ekle. Sunucu paylaşımı üzerinden geliyorsa
+         `\\yazdirma-sunucusu\yazici-adi` yolunu kullan.
+      4. **Üreticinin kendi sürücüsü** yerine mümkünse sınıf sürücüsünü
+         (Universal / Class Driver) tercih et — daha az bozulur.
+    verify_text: "Yeniden eklendikten sonra test sayfası yazdırıldı mı?"
+    risk: orta
+    requires_admin: true
+    rollback_md: "Kaldırma sonrası yazıcı bulunamazsa IP ile doğrudan TCP/IP portu olarak ekle."
+    est_seconds: 600
+    edges:
+      - { label: "Çıktı geldi",   to: N41 }
+      - { label: "Hâlâ çıkmıyor", to: N90 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — yazıcı sürücüsü veya bağlantısı yenilendi"
+    root_cause: YAZICI_SURUCU
+    closure_note: "Sürücü veya yazıcı bağlantısı bozulmuştu."
+
+  # ── Cihaz kolu ────────────────────────────────────────────────────
+  - key: N50
+    type: talimat
+    title: "Yazıcının fiziksel durumunu kontrol et"
+    body_md: |
+      Kimse çıktı alamıyorsa cihazın kendisine bak — uzaktan tahmin etme,
+      birinden yazıcının yanına gitmesini iste:
+
+      1. Panelde **hata mesajı veya uyarı ışığı** var mı? Kodu not al.
+      2. Kâğıt var mı, sıkışma var mı, kapaklar kapalı mı?
+      3. Toner/kartuş seviyesi — "değiştirin" uyarısı yazdırmayı durdurabilir.
+      4. Ağ yazıcısıysa **panelden IP adresini oku** ve o IP'ye ping at.
+      5. Cihazı kapat, 30 sn bekle, aç.
+    verify_text: "Yazıcı panelinde hata yok ve IP'sine ping gidiyor mu?"
+    est_seconds: 420
+    edges:
+      - { label: "Fiziksel sorun vardı, giderildi", to: N51 }
+      - { label: "Panel temiz ama ping gitmiyor",   to: N52 }
+      - { label: "Panelde anlaşılmayan hata kodu var", to: N91 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — kâğıt, toner, sıkışma veya kapak"
+    root_cause: YAZICI_FIZIKSEL
+    closure_note: "Cihazda fiziksel bir engel vardı."
+    followup_md: |
+      Aynı yazıcıda sıkışma tekrarlıyorsa merdaneler aşınmış olabilir;
+      bakım kaydı aç. Tek tek sıkışma açmak semptom tedavisidir.
+
+  - key: N52
+    type: talimat
+    title: "Yazıcının ağ bağlantısını doğrula"
+    body_md: |
+      1. Yazıcı panelinden IP adresini ve ağ ayarlarını oku.
+      2. IP, DHCP'den mi geldi yoksa sabit mi? DHCP ile aldıysa adres
+         değişmiş olabilir — yazdırma sunucusundaki port eski IP'yi
+         gösteriyordur.
+      3. Ağ kablosunu ve switch portu LED'ini kontrol et.
+      4. Yazıcıya **sabit IP veya DHCP rezervasyonu** ver.
+    verify_text: "Yazıcının IP'sine ping gidiyor ve web arayüzü açılıyor mu?"
+    risk: orta
+    est_seconds: 420
+    edges:
+      - { label: "Ağ bağlantısı düzeldi", to: N53 }
+      - { label: "Düzelmedi",             to: N90 }
+
+  - key: N53
+    type: cozum
+    title: "Çözüldü — yazıcının IP adresi değişmişti"
+    root_cause: YAZICI_IP_DEGISTI
+    closure_note: "DHCP yazıcıya yeni bir adres vermişti, port eskisini gösteriyordu."
+    followup_md: |
+      Tüm ağ yazıcılarına DHCP rezervasyonu tanımla. Bu arıza sınıfı
+      rezervasyon olmadan kaçınılmaz olarak tekrarlar.
+
+  - key: N90
+    type: eskalasyon
+    title: "L2 / yazdırma altyapısına eskale et"
+    body_md: "İstemci ve cihaz tarafında yapılabilecekler tükendi."
+    escalate_to: "L2-Yazdirma"
+
+  - key: N91
+    type: eskalasyon
+    title: "Yazıcı servisine yönlendir — donanım hata kodu"
+    body_md: |
+      Panelde üreticiye özgü bir hata kodu var. Bu L1 kapsamı dışıdır.
+
+      Servise iletirken **hata kodunu, yazıcı modelini ve seri numarasını**
+      birlikte gönder — üçü olmadan servis randevu açmaz.
+    escalate_to: "Yazici-Servis"

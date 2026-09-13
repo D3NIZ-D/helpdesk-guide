@@ -1,0 +1,38 @@
+# T3 referans kartı. Lisans disiplini (tasarım §22.6): çözüm metni kendi
+# cümlelerimizle yazıldı, otoriter kaynağa yalnızca bağlantı verildi.
+
+code: ERR-WIN-0X7B
+tier: reference
+title: "Mavi ekran 0x0000007B — INACCESSIBLE_BOOT_DEVICE"
+category: donanim/onyukleme
+severity: yuksek
+status: yayinda
+verification: incelendi
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+
+tags: [bsod, stop-code, onyukleme]
+
+aliases:
+  - { term: "0x0000007b",            kind: hata_kodu, weight: 1.5 }
+  - { term: "inaccessible boot device", kind: hata_kodu, weight: 1.5 }
+  - { term: "erişilemeyen önyükleme aygıtı", kind: hata_kodu, weight: 1.3 }
+
+likely_causes:
+  - "BIOS/UEFI'de SATA modu AHCI ↔ RAID/IDE arasında değişmiş"
+  - "Depolama denetleyici sürücüsü bozuk veya eksik"
+  - "Disk klonlama / imaj sonrası sürücü uyumsuzluğu"
+  - "Başarısız bir Windows güncellemesi sonrası bozuk önyükleme yapılandırması"
+
+fix_summary: |
+  Önce BIOS'ta SATA/depolama modunu eski değerine döndür; bu kodun en sık
+  sebebi budur ve tek ayarla çözülür. Mod kasıtlı değiştirildiyse Windows'u
+  bir kez Güvenli Mod'da açarak doğru denetleyici sürücüsünü yükletip geri
+  dön. Klonlama sonrasıysa hedef donanımın depolama sürücüsü imajda yoktur.
+
+source:
+  name: "Microsoft Learn — Bug check code reference"
+  url: "https://learn.microsoft.com/windows-hardware/drivers/debugger/bug-check-code-reference2"
+  note: "Bağlantı verildi, metin kopyalanmadı."
+
+related_runbook: BOOT-001

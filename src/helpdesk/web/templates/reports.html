@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ t.nav_reports or "Raporlar" }} · helpdesk-guide{% endblock %}
+
+{% macro report_table(name, rows, columns) %}
+  <section class="card report">
+    <h2>{{ t['report_' ~ name] or name }}</h2>
+    <p class="dim action-hint">{{ t['report_' ~ name ~ '_action'] or "" }}</p>
+    {% if rows %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr>{% for col in columns %}<th>{{ t[col] or col }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>{% for col in columns %}
+                <td>
+                  {% if col == "code" and row[col] %}<a href="/r/{{ row[col] }}"><code>{{ row[col] }}</code></a>
+                  {% else %}{{ row[col] if row[col] is not none else "—" }}{% endif %}
+                </td>
+              {% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="dim">{{ t.report_empty or "Henüz veri yok — bu rapor kullanımdan doğar." }}</p>
+    {% endif %}
+  </section>
+{% endmacro %}
+
+{% block content %}
+<h1>{{ t.nav_reports or "Raporlar" }}</h1>
+<p class="lede dim">{{ t.reports_intro or
+  "Bu veriler bu makinede kalır ve içeriği iyileştirmek içindir, personeli ölçmek için değil." }}</p>
+
+<section class="stats">
+  <div class="stat"><span class="stat-value">{{ coverage.records }}</span>
+    <span class="stat-label">{{ t.records or "kayıt" }}</span></div>
+  <div class="stat"><span class="stat-value">{{ coverage.sessions }}</span>
+    <span class="stat-label">{{ t.sessions or "oturum" }}</span></div>
+  <div class="stat"><span class="stat-value">
+      {% if coverage.first_contact_resolution is not none %}
+        {{ (coverage.first_contact_resolution * 100) | round | int }}%
+      {% else %}—{% endif %}</span>
+    <span class="stat-label">{{ t.fcr or "ilk temasta çözüm" }}</span></div>
+  <div class="stat{% if coverage.open_knowledge_gaps %} stat-alert{% endif %}">
+    <span class="stat-value">{{ coverage.open_knowledge_gaps }}</span>
+    <span class="stat-label">{{ t.open_gaps or "açık bilgi boşluğu" }}</span></div>
+  <div class="stat{% if coverage.stale_records %} stat-alert{% endif %}">
+    <span class="stat-value">{{ coverage.stale_records }}</span>
+    <span class="stat-label">{{ t.stale or "bayat kayıt" }}</span></div>
+</section>
+
+<section class="card">
+  <h2>{{ t.by_tier_verification or "Katman ve doğrulama dağılımı" }}</h2>
+  <div class="dist">
+    {% for tier, n in coverage.by_tier.items() %}
+      <span class="tier tier-{{ tier }}">{{ t['tier_' ~ tier] or tier }} {{ n }}</span>
+    {% endfor %}
+    {% for level, n in coverage.by_verification.items() %}
+      <span class="badge badge-{{ level }}">{{ t['verif_' ~ level] or level }} {{ n }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+{{ report_table("knowledge_gaps", reports.knowledge_gaps,
+                ["query_raw", "hit_count", "best_score", "last_seen"]) }}
+{{ report_table("dead_ends", reports.dead_ends,
+                ["code", "node_title", "abandoned_count"]) }}
+{{ report_table("escalation_hotspots", reports.escalation_hotspots,
+                ["code", "title", "sessions", "escalations", "escalation_rate"]) }}
+{{ report_table("skipped_steps", reports.skipped_steps,
+                ["code", "node_title", "skips", "visits", "skip_rate"]) }}
+{{ report_table("slow_steps", reports.slow_steps,
+                ["code", "node_title", "avg_dwell_s", "est_seconds", "visits"]) }}
+{{ report_table("stale_content", reports.stale_content,
+                ["code", "title", "tier", "review_due"]) }}
+{{ report_table("root_cause_distribution", reports.root_cause_distribution,
+                ["root_cause", "occurrences", "records"]) }}
+{% endblock %}

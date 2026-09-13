@@ -1,0 +1,112 @@
+# Golden query set — the regression suite for search quality.
+#
+# Search only improves if it is measured (design doc section 13.3).  Every
+# entry is a phrasing a real person might type, including the ones that
+# break naive search: no Turkish characters, ALL CAPS, wrong word, English
+# loanword, inflected six ways.
+#
+# `expect`   the record that must be returned
+# `max_rank` how far down the list it may appear (1 = must be first)
+#
+# CI runs this on every content change.  When adding a runbook breaks an
+# older query, it fails here, in the pull request -- not three weeks later
+# on a phone call.
+#
+# When you add a record, add at least three queries for it (section 20.3).
+
+# ── DSP-001 Monitörde görüntü yok ────────────────────────────────────
+- { query: "monitorum calismiyor",              expect: DSP-001, max_rank: 1 }
+- { query: "monitör çalışmıyor",                expect: DSP-001, max_rank: 1 }
+- { query: "MONİTÖR ÇALIŞMIYOR",                expect: DSP-001, max_rank: 1 }
+- { query: "ekran siyah",                       expect: DSP-001, max_rank: 1 }
+- { query: "ekranda goruntu yok",               expect: DSP-001, max_rank: 1 }
+- { query: "no signal yaziyor",                 expect: DSP-001, max_rank: 1 }
+- { query: "sinyal yok diyor ekranda",          expect: DSP-001, max_rank: 1 }
+- { query: "monitörümde görüntü gelmiyor",      expect: DSP-001, max_rank: 1 }
+- { query: "display yok",                       expect: DSP-001, max_rank: 2 }
+
+# ── PWR-001 Bilgisayar hiç açılmıyor ─────────────────────────────────
+- { query: "bilgisayar açılmıyor",              expect: PWR-001, max_rank: 1 }
+- { query: "bilgisayarim acilmiyor",            expect: PWR-001, max_rank: 1 }
+- { query: "kasa hiç tepki vermiyor",           expect: PWR-001, max_rank: 1 }
+- { query: "laptop açılmıyor ışık bile yanmıyor", expect: PWR-001, max_rank: 1 }
+
+# ── BOOT-001 Windows açılmıyor ───────────────────────────────────────
+- { query: "windows açılmıyor",                 expect: BOOT-001, max_rank: 1 }
+- { query: "mavi ekran veriyor",                expect: BOOT-001, max_rank: 2 }
+- { query: "surekli yeniden basliyor",          expect: BOOT-001, max_rank: 1 }
+- { query: "logoda kaliyor acilmiyor",          expect: BOOT-001, max_rank: 1 }
+
+# ── NET-001 İnternete bağlanamıyor ───────────────────────────────────
+- { query: "internete bağlanamıyorum",          expect: NET-001, max_rank: 1 }
+- { query: "internet yok",                      expect: NET-001, max_rank: 1 }
+- { query: "internetim gitmiyor",               expect: NET-001, max_rank: 1 }
+- { query: "ag baglantisi yok",                 expect: NET-001, max_rank: 1 }
+- { query: "sarı ünlem işareti var ağda",       expect: NET-001, max_rank: 1 }
+- { query: "wifi bağlanmıyor internet yok",     expect: NET-001, max_rank: 2 }
+
+# ── ACC-001 Hesap kilitli ────────────────────────────────────────────
+- { query: "hesabım kilitlendi",                expect: ACC-001, max_rank: 1 }
+- { query: "hesabim kilitli",                   expect: ACC-001, max_rank: 1 }
+- { query: "şifre kabul etmiyor",               expect: ACC-001, max_rank: 1 }
+- { query: "sifremi unuttum giris yapamiyorum", expect: ACC-001, max_rank: 1 }
+- { query: "oturum açamıyorum",                 expect: ACC-001, max_rank: 1 }
+
+# ── PRN-001 Yazıcı çıktı vermiyor ────────────────────────────────────
+- { query: "yazıcı çıktı vermiyor",             expect: PRN-001, max_rank: 1 }
+- { query: "yazici yazdirmiyor",                expect: PRN-001, max_rank: 1 }
+- { query: "çıktı alamıyorum",                  expect: PRN-001, max_rank: 1 }
+- { query: "yazdirma kuyrugu takildi",          expect: PRN-001, max_rank: 1 }
+- { query: "yazıcıdan kağıt çıkmıyor",          expect: PRN-001, max_rank: 1 }
+
+# ── SEC-001 Şüpheli e-posta ──────────────────────────────────────────
+- { query: "şüpheli e-posta geldi",             expect: SEC-001, max_rank: 1 }
+- { query: "supheli mail geldi",                expect: SEC-001, max_rank: 1 }
+- { query: "oltalama maili",                    expect: SEC-001, max_rank: 1 }
+- { query: "phishing maili aldım",              expect: SEC-001, max_rank: 1 }
+- { query: "linke tıkladım şifremi girdim",     expect: SEC-001, max_rank: 1 }
+
+# ── T2 guides ────────────────────────────────────────────────────────
+- { query: "ağ sürücüsü kayboldu",              expect: NET-014, max_rank: 1 }
+- { query: "mapped drive baglanmiyor",          expect: NET-014, max_rank: 1 }
+- { query: "kırmızı çarpı ağ sürücüsünde",      expect: NET-014, max_rank: 1 }
+- { query: "disk doldu",                        expect: PRF-002, max_rank: 1 }
+- { query: "c surucusunde yer kalmadi",         expect: PRF-002, max_rank: 1 }
+- { query: "mikrofonum çalışmıyor",             expect: APP-002, max_rank: 1 }
+- { query: "toplantida karsi taraf duymuyor",   expect: APP-002, max_rank: 1 }
+- { query: "kulaklığım çalışmıyor teams",       expect: APP-002, max_rank: 2 }
+
+# ── T3 reference cards: error codes must land exactly ────────────────
+- { query: "0x0000007B",                        expect: ERR-WIN-0X7B, max_rank: 1 }
+- { query: "0x0000007b mavi ekran",             expect: ERR-WIN-0X7B, max_rank: 1 }
+- { query: "INACCESSIBLE_BOOT_DEVICE",          expect: ERR-WIN-0X7B, max_rank: 1 }
+- { query: "169.254 ip adresi aliyor",          expect: ERR-NET-APIPA, max_rank: 1 }
+- { query: "apipa adresi",                      expect: ERR-NET-APIPA, max_rank: 1 }
+- { query: "yazıcı çevrimdışı görünüyor",       expect: ERR-PRN-OFFLINE, max_rank: 1 }
+- { query: "printer is offline",                expect: ERR-PRN-OFFLINE, max_rank: 1 }
+- { query: "event id 4740",                     expect: ERR-AD-4740, max_rank: 1 }
+
+# ── Hard cases ───────────────────────────────────────────────────────
+# None of these are aliases. They are paraphrases, colloquialisms and the
+# half-sentences people actually type. A golden set where everything
+# passes on day one is not measuring anything -- this block is what makes
+# the number move when the lexicon or the stemmer changes.
+- { query: "ekranım kapkara hiçbir şey görünmüyor", expect: DSP-001, max_rank: 2 }
+- { query: "dis ekranda goruntu yok dock'a takili", expect: DSP-001, max_rank: 3 }
+- { query: "ikinci monitör görüntü vermiyor",   expect: DSP-001, max_rank: 2 }
+- { query: "pcnin fani donuyor ama ekran kapali", expect: DSP-001, max_rank: 3 }
+- { query: "makine hic calismiyor elektrik gelmiyor", expect: PWR-001, max_rank: 2 }
+- { query: "acmaya calisiyorum tepki yok",      expect: PWR-001, max_rank: 3 }
+- { query: "acilirken mavi ekrana dusuyor",     expect: BOOT-001, max_rank: 2 }
+- { query: "windows kurtarma ekraninda kaldi",  expect: BOOT-001, max_rank: 2 }
+- { query: "siteler acilmiyor ama wifi bagli gorunuyor", expect: NET-001, max_rank: 3 }
+- { query: "vpn'e baglanamiyorum internet de yok", expect: NET-001, max_rank: 3 }
+- { query: "parolami girince kabul etmiyor sisteme giremedim", expect: ACC-001, max_rank: 2 }
+- { query: "kullanici adi veya parola hatali diyor", expect: ACC-001, max_rank: 1 }
+- { query: "yazdirmaya basiyorum bir sey olmuyor", expect: PRN-001, max_rank: 2 }
+- { query: "printer bir turlu basmiyor",        expect: PRN-001, max_rank: 2 }
+- { query: "bankadan geldigini soyleyen garip bir mail var", expect: SEC-001, max_rank: 2 }
+- { query: "sahte fatura maili aldim ne yapmaliyim", expect: SEC-001, max_rank: 2 }
+- { query: "harddiskte yer kalmadi uyarisi aliyorum", expect: PRF-002, max_rank: 2 }
+- { query: "teamste beni duymuyorlar",          expect: APP-002, max_rank: 2 }
+- { query: "paylasim klasorune erisemiyorum",   expect: NET-014, max_rank: 3 }

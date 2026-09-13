@@ -1,0 +1,32 @@
+code: ERR-PRN-OFFLINE
+tier: reference
+title: "Yazıcı 'Çevrimdışı' görünüyor ama açık"
+category: yazici/cikti
+severity: dusuk
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+
+tags: [yazici, offline, snmp]
+
+aliases:
+  - { term: "yazıcı çevrimdışı görünüyor", kind: hata_kodu, weight: 1.3 }
+  - { term: "printer is offline",       kind: hata_kodu, weight: 1.3 }
+  - { term: "yazıcı kapalı görünüyor",  kind: belirti, weight: 1.0 }
+
+likely_causes:
+  - "'Yazıcıyı çevrimdışı kullan' seçeneği elle işaretlenmiş"
+  - "Yazıcının IP adresi DHCP ile değişmiş, port eski adresi gösteriyor"
+  - "SNMP durum sorgusu engelleniyor; Windows cihazı kapalı sanıyor"
+  - "Yazıcı uyku modundan uyanmıyor"
+
+fix_summary: |
+  Önce yazıcı menüsünden "Çevrimdışı kullan" işaretini kaldır. Durum
+  değişmiyorsa yazıcının panelinden IP adresini oku ve port ayarındaki
+  adresle karşılaştır; farklıysa DHCP adresi değiştirmiştir. Kalıcı çözüm
+  DHCP rezervasyonudur. Adres doğruysa port ayarlarında **SNMP durum
+  bilgisini devre dışı bırak** — pek çok ağ yazıcısı bu sorguya cevap
+  vermez ve Windows bunu "kapalı" diye yorumlar.
+
+related_runbook: PRN-001

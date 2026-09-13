@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}{{ record.code }} · {{ view.title }}{% endblock %}
+
+{% block content %}
+{% set total = view.step_number + view.est_remaining_steps %}
+
+<div class="walk" data-session="{{ state.session_id }}">
+
+  <header class="walk-head">
+    <div class="walk-title">
+      <code class="code">{{ record.code }}</code>
+      <a href="/r/{{ record.code }}">{{ record.title }}</a>
+    </div>
+    <div class="walk-timer" id="timer" data-started="{{ state.started_at }}"
+         data-elapsed="{{ state.elapsed_s }}">⏱ 00:00</div>
+  </header>
+
+  <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="{{ total }}"
+       aria-valuenow="{{ view.step_number }}"
+       aria-label="{{ t.step or 'Adım' }} {{ view.step_number }}/{{ total }}">
+    {% for i in range(total) %}
+      <span class="pip{% if i < view.step_number %} done{% endif %}{% if i == view.step_number - 1 %} current{% endif %}"></span>
+    {% endfor %}
+    <span class="progress-label dim">{{ t.step or "Adım" }} {{ view.step_number }}/~{{ total }}</span>
+  </div>
+
+  {% for w in view.warnings %}
+    {% if w == "high_risk" %}
+      <div class="banner banner-danger">
+        <strong>{{ t.warn_high_risk or "Yüksek riskli adım" }}</strong>
+        {{ t.warn_high_risk_body or "Kullanıcıyı bilgilendir ve geri alma talimatını okumadan başlama." }}
+      </div>
+    {% elif w == "requires_admin" %}
+      <div class="banner banner-warn">{{ t.warn_admin or "Yönetici yetkisi gerekiyor." }}</div>
+    {% elif w == "user_downtime" %}
+      <div class="banner banner-warn">{{ t.warn_downtime or "Kullanıcı bu adım boyunca çalışamayacak — önce haber ver." }}</div>
+    {% elif w == "loop_detected" %}
+      <div class="banner banner-danger">{{ t.warn_loop or "Bu adıma tekrar geldin. İçerikte döngü olabilir — bildirmeyi düşün." }}</div>
+    {% endif %}
+  {% endfor %}
+
+  <article class="card node node-{{ view.type }}">
+    <h1 class="node-title">{{ view.title }}</h1>
+
+    {% if view.body_md %}
+      <div class="prose">{{ view.body_md | markdown | safe }}</div>
+    {% endif %}
+
+    {% if view.media %}
+      <div class="media">
+        {% for m in view.media %}<img src="/media/{{ m }}" alt="" loading="lazy">{% endfor %}
+      </div>
+    {% endif %}
+
+    {% if view.rollback_md %}
+      <details class="rollback">
+        <summary>{{ t.rollback or "Geri alma talimatı" }}</summary>
+        <div class="prose">{{ view.rollback_md | markdown | safe }}</div>
+      </details>
+    {% endif %}
+
+    {% if view.verify_text %}
+      <p class="verify"><strong>{{ t.verify or "Nasıl anlarsın" }}:</strong> {{ view.verify_text }}</p>
+    {% endif %}
+
+    {% if view.is_terminal %}
+      {# ── Terminal: resolution or escalation ───────────────────────── #}
+      <div class="terminal terminal-{{ view.type }}">
+        {% if view.type == "resolution" %}
+          <p class="terminal-head">✅ {{ t.resolved or "Çözüldü" }}</p>
+          {% if view.root_cause %}
+            <p>{{ t.root_cause or "Kök neden" }}: <code>{{ view.root_cause }}</code></p>
+          {% endif %}
+          {% if view.closure_note %}<p>{{ view.closure_note }}</p>{% endif %}
+          {% if view.part_required %}
+            <p>{{ t.part_required or "Parça talebi" }}: <code>{{ view.part_required }}</code></p>
+          {% endif %}
+          {% if view.followup_md %}
+            <div class="prose followup">{{ view.followup_md | markdown | safe }}</div>
+          {% endif %}
+        {% else %}
+          <p class="terminal-head">⚠ {{ t.escalated or "Eskalasyon" }}
+            {% if view.escalate_to %}→ <code>{{ view.escalate_to }}</code>{% endif %}</p>
+        {% endif %}
+
+        <div class="summary-box">
+          <div class="summary-head">
+            <strong>{{ t.case_summary or "Vaka özeti" }}</strong>
+            <button type="button" class="primary" id="copy-summary"
+                    data-url="/s/{{ state.session_id }}/summary">
+              📋 {{ t.copy or "Kopyala" }} <kbd class="hint">c</kbd>
+            </button>
+          </div>
+          <pre id="summary-text" class="summary-text" data-url="/s/{{ state.session_id }}/summary">{{ t.loading or "Yükleniyor…" }}</pre>
+        </div>
+
+        <div class="terminal-actions">
+          <a class="button" href="/">{{ t.new_search or "Yeni arama" }}</a>
+          <button type="button" class="ghost feedback" data-kind="worked"
+                  data-code="{{ record.code }}">👍 {{ t.fb_worked or "İşe yaradı" }}</button>
+          <button type="button" class="ghost feedback" data-kind="did_not_work"
+                  data-code="{{ record.code }}">👎 {{ t.fb_failed or "İşe yaramadı" }}</button>
+        </div>
+      </div>
+
+    {% else %}
+      {# ── Options ──────────────────────────────────────────────────── #}
+      <form method="post" action="/s/{{ state.session_id }}/answer" class="options" id="options">
+        {% for option in view.options %}
+          <button type="submit" name="label" value="{{ option.label }}" class="option"
+                  data-index="{{ option.index }}">
+            <kbd class="hint">{{ option.index }}</kbd>
+            <span>{{ option.label }}</span>
+          </button>
+        {% endfor %}
+      </form>
+    {% endif %}
+  </article>
+
+  {% if not view.is_terminal %}
+    <div class="walk-actions">
+      {% if can_go_back %}
+        <form method="post" action="/s/{{ state.session_id }}/back">
+          <button type="submit" class="ghost">← {{ t.back or "Geri" }} <kbd class="hint">⌫</kbd></button>
+        </form>
+      {% endif %}
+      <button type="button" class="ghost" id="skip-toggle">
+        ⤼ {{ t.skip or "Bu adımı atla" }} <kbd class="hint">s</kbd>
+      </button>
+      <button type="button" class="ghost feedback" data-kind="content_error"
+              data-code="{{ record.code }}" data-node="{{ view.key }}">
+        ⚑ {{ t.report_content or "İçerik hatalı" }}
+      </button>
+      <form method="post" action="/s/{{ state.session_id }}/abandon" class="right">
+        <button type="submit" class="ghost quiet">{{ t.give_up or "Bırak" }}</button>
+      </form>
+    </div>
+    <p class="skip-hint dim" id="skip-hint" hidden>
+      {{ t.skip_hint or "Atlama modu açık: bir seçenek seç, adım “zaten denendi” olarak kaydedilir ve eskalasyon özetinde ayrı görünür." }}
+    </p>
+  {% endif %}
+
+  {% if steps | length > 1 %}
+    <details class="path">
+      <summary>{{ t.path_so_far or "Buraya nasıl gelindi" }} ({{ steps | length }})</summary>
+      <ol class="path-list">
+        {% for s in steps %}
+          <li{% if s.skipped %} class="skipped"{% endif %}>
+            <span class="path-title">{{ s.title }}</span>
+            {% if s.answer %}<span class="path-answer dim">→ {{ s.answer }}</span>{% endif %}
+            {% if s.skipped %}<span class="tag">{{ t.skipped or "atlandı" }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </details>
+  {% endif %}
+</div>
+{% endblock %}

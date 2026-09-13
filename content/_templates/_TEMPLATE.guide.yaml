@@ -1,0 +1,49 @@
+# ─────────────────────────────────────────────────────────────────────
+# T2 GUIDE — linear checklist, 3 to 8 steps, no branching
+#
+# Most faults do not need a decision tree.  If the fix is "try these four
+# things in this order", a tree adds ceremony and costs the technician
+# time.  Reach for this tier first; promote to a runbook only when the
+# steps genuinely diverge.
+#
+# Writing time: 20-40 minutes, against 2-4 hours for a runbook.  That
+# ratio is the whole reason the tier exists (design doc section 22.1).
+#
+# Scaffold one with:  helpdesk new --tier guide --code NET-014
+# ─────────────────────────────────────────────────────────────────────
+
+code: XXX-000
+tier: guide
+title: "REPLACE_TITLE"
+summary: "Bir cümlede ne olduğu."
+category: REPLACE_CATEGORY
+severity: dusuk
+status: taslak
+verification: taslak
+author: "REPLACE_AUTHOR"
+reviewed_at: REPLACE_DATE
+review_period_days: 540          # guides age more slowly than runbooks
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+aliases:
+  - { term: "kullanıcı ağzından belirti", kind: belirti }
+  - { term: "kullanıcının kullandığı yanlış kelime", kind: belirti }
+  - { term: "english phrasing",           kind: belirti, weight: 0.8 }
+
+steps:
+  - title: "En ucuz ve en sık işe yarayan şeyi önce dene"
+    note: "Neden işe yaradığını tek cümleyle yaz — teknisyen öğrensin."
+  - title: "İkinci adım"
+  - title: "Üçüncü adım"
+    note: "Komut varsa buraya yaz, çıktıda neye bakılacağını söyle."
+    requires_admin: true
+  - title: "Son çare"
+    risk: orta
+
+# Bir karar ağacına bağla: kart çözmezse teknisyen oraya atlar.
+# 5.000 kayıt dağınık bir yığın değil, 150 ağacın etrafında örülmüş bir ağ
+# olmalı (tasarım §22.4).
+related_runbook: XXX-000

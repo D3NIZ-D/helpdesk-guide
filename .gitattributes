@@ -1,0 +1,24 @@
+# Normalise line endings so a Windows checkout does not produce a diff on
+# every content file.
+* text=auto eol=lf
+
+*.py    text diff=python
+*.yaml  text
+*.yml   text
+*.md    text
+*.sql   text
+*.json  text
+*.html  text
+*.css   text
+*.js    text
+
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.pdf   binary
+*.db    binary
+
+# Keep generated and vendored paths out of language statistics.
+tests/golden_queries.yaml linguist-generated=false
+content/** linguist-documentation

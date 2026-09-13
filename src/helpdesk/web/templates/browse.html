@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ t.nav_browse or "Gözat" }} · helpdesk-guide{% endblock %}
+
+{% block content %}
+<h1>{{ t.nav_browse or "Gözat" }}</h1>
+
+<form class="filters" method="get" action="/browse">
+  <label>{{ t.categories or "Kategori" }}
+    <select name="category" onchange="this.form.submit()">
+      <option value="">{{ t.all or "Tümü" }}</option>
+      {% for c in categories if c.record_count %}
+        <option value="{{ c.code }}"{% if c.code == category %} selected{% endif %}>
+          {{ c.code }} ({{ c.record_count }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>{{ t.tier or "Katman" }}
+    <select name="tier" onchange="this.form.submit()">
+      <option value="">{{ t.all or "Tümü" }}</option>
+      {% for value in ("runbook", "guide", "reference") %}
+        <option value="{{ value }}"{% if value == tier %} selected{% endif %}>
+          {{ t['tier_' ~ value] or value }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <noscript><button type="submit" class="primary">{{ t.apply or "Uygula" }}</button></noscript>
+</form>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>{{ t.code or "Kod" }}</th><th>{{ t.title or "Başlık" }}</th>
+      <th>{{ t.tier or "Katman" }}</th><th>{{ t.verification or "Doğrulama" }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in records %}
+      <tr>
+        <td><a href="/r/{{ r.code }}"><code>{{ r.code }}</code></a></td>
+        <td><a href="/r/{{ r.code }}">{{ r.title }}</a>
+            {% if r.summary %}<br><span class="dim">{{ r.summary }}</span>{% endif %}</td>
+        <td><span class="tier tier-{{ r.tier }}">{{ t['tier_' ~ r.tier] or r.tier }}</span></td>
+        <td><span class="badge badge-{{ r.verification }}">{{ t['verif_' ~ r.verification] or r.verification }}</span></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="dim">{{ t.no_records or "Kayıt yok." }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

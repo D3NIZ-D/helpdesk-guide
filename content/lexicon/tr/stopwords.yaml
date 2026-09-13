@@ -1,0 +1,82 @@
+# Turkish stopwords for help-desk queries.
+#
+# Kept deliberately short.  A general-purpose Turkish stopword list would
+# strip "yok" and "değil", and those two words carry the entire meaning of
+# a fault report -- "internet yok" would become "internet".
+#
+# Only words that never distinguish one runbook from another belong here.
+
+stopwords:
+  # pronouns and determiners
+  - ben
+  - benim
+  - bizim
+  - bana
+  - bize
+  - onun
+  - bu
+  - şu
+  - o
+  - bir
+  - bazı
+  - her
+  - kendi
+
+  # conjunctions and particles
+  - ve
+  - ile
+  - ama
+  - fakat
+  - ancak
+  - veya
+  - ya
+  - da
+  - de
+  - ki
+  - ise
+  - için
+  - gibi
+  - kadar
+  - sonra
+  - önce
+  - şimdi
+  - artık
+  - hep
+  - yine
+  - tekrar
+
+  # polite filler that shows up constantly in tickets
+  - lütfen
+  - acaba
+  - rica
+  - ederim
+  - merhaba
+  - teşekkür
+  - teşekkürler
+  - kolay
+  - gelsin
+  - selam
+
+  # vague verbs that add nothing on their own
+  - var
+  - oldu
+  - olur
+  - yapıyor
+  - yaptım
+  - denedim
+  - baktım
+  - diyor
+  - dedi
+  - sanırım
+  - galiba
+  - herhalde
+
+  # units of complaint
+  - sorun
+  - problem
+  - mesele
+  - durum
+  - konu
+  - yardım
+  - destek
+  - acil

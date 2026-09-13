@@ -1,0 +1,74 @@
+# Fault-verb vocabulary: what is wrong, as opposed to what it is wrong with.
+#
+# A query names a thing and a failure ("yazıcı" + "çıktı almıyor").  The
+# thing narrows the category; the failure narrows which runbook inside it.
+# Without this split, "yazıcı çok yavaş" and "yazıcı yazdırmıyor" look
+# almost identical to a bag-of-words search -- they share the only noun.
+#
+# Intent codes are matched against category prefixes in the matcher
+# (_INTENT_CATEGORY_HINTS), so renaming one here means renaming it there.
+#
+# Triggers are substring-matched against the folded query, which is what
+# makes Turkish inflection cheap to handle: the trigger "calismiyor" also
+# fires for "çalışmıyormuş" and "çalışmıyorlar".
+
+faults:
+  NO_DISPLAY:
+    terms: [görüntü yok, görüntü gelmiyor, görüntü vermiyor, ekran siyah,
+            siyah ekran, kararıyor, no signal, sinyal yok, ekran kapalı,
+            ekran açılmıyor, display yok, resim yok, boş ekran, karanlık ekran]
+
+  NO_POWER:
+    terms: [güç gelmiyor, hiç tepki vermiyor, hiç açılmıyor, ışık yanmıyor,
+            led yanmıyor, elektrik gelmiyor, kendi kendine kapanıyor,
+            şarj olmuyor, şarj almıyor, pil bitiyor, fişe takılı ama]
+
+  NO_BOOT:
+    terms: [boot etmiyor, başlamıyor, açılışta kalıyor, mavi ekran, bsod,
+            windows açılmıyor, logo da kalıyor, döngüye giriyor, yeniden başlıyor,
+            kurtarma ekranı, otomatik onarım, önyükleme]
+
+  NO_NETWORK:
+    terms: [bağlanmıyor, internet yok, internete giremiyorum, ağ yok,
+            bağlantı kopuyor, sürekli düşüyor, wifi bağlanmıyor, ip alamıyor,
+            sınırlı bağlantı, ünlem işareti, sarı ünlem, dns hatası,
+            vpn bağlanmıyor, vpn düşüyor, uzaktan bağlanamıyorum,
+            paylaşıma erişemiyorum, ağ sürücüsü gitti]
+
+  NO_SOUND:
+    terms: [ses gelmiyor, ses yok, duyulmuyor, mikrofon çalışmıyor,
+            mikrofonum gitmiyor, karşı taraf duymuyor, ben duymuyorum,
+            hoparlör çalışmıyor, kulaklık çalışmıyor, sesim gitmiyor]
+
+  PRINTING:
+    terms: [yazdırmıyor, çıktı almıyor, çıktı vermiyor, kuyrukta kalıyor,
+            kuyruk takılıyor, kağıt sıkışması, kağıt çekmiyor, boş çıkıyor,
+            soluk basıyor, çizgili basıyor, toner bitti, yazıcı bulunamıyor,
+            yazıcı eklenemiyor, çevrimdışı görünüyor]
+
+  IDENTITY:
+    terms: [şifre kabul etmiyor, parola kabul etmiyor, hesap kilitli,
+            hesabım kilitlendi, giriş yapamıyorum, oturum açamıyorum,
+            şifremi unuttum, süresi dolmuş, kimlik doğrulama hatası,
+            mfa çalışmıyor, doğrulama kodu gelmiyor, telefonumu değiştirdim,
+            yetkim yok, erişim reddedildi, access denied]
+
+  SLOW:
+    terms: [yavaş, çok yavaş, donuyor, kasıyor, takılıyor, kilitleniyor,
+            geç açılıyor, uzun sürüyor, yanıt vermiyor, yanıt vermiyor durumunda,
+            disk doldu, yer kalmadı, bellek yetersiz, fan sesi geliyor,
+            aşırı ısınıyor]
+
+  SECURITY:
+    terms: [şüpheli e-posta, şüpheli mail, oltalama, phishing, sahte fatura,
+            zararlı yazılım bulundu, virüs uyarısı, karantinaya alındı,
+            fidye, ransomware, dosyalarım şifrelendi, tıkladım, linke tıkladım,
+            bilgilerimi girdim, hesabım ele geçirildi]
+
+  ERROR_MESSAGE:
+    terms: [hata veriyor, hata alıyorum, hata kodu, error, uyarı veriyor,
+            mesaj çıkıyor, ekranda yazı çıkıyor, exception]
+
+  NOT_WORKING:
+    terms: [çalışmıyor, bozuldu, arızalı, gitmiyor, olmuyor, tepki vermiyor,
+            tanımıyor, görmüyor, algılamıyor, çıkmıyor, kayboldu]

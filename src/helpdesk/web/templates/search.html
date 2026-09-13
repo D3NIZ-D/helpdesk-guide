@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ t.search_title or "Arama" }} · helpdesk-guide{% endblock %}
+
+{% block content %}
+<section class="search-panel">
+  <form class="search-form" method="get" action="/" role="search">
+    <label class="visually-hidden" for="q">{{ t.search_label or "Belirti ara" }}</label>
+    <span class="search-icon" aria-hidden="true">🔍</span>
+    <input id="q" name="q" type="search" value="{{ q }}" autocomplete="off"
+           autofocus spellcheck="false"
+           placeholder="{{ t.search_placeholder or 'Belirtiyi kullanıcının söylediği gibi yaz — monitorum calismiyor' }}">
+    <button type="submit" class="primary">{{ t.search_button or "Ara" }}</button>
+  </form>
+
+  {% if result %}
+    <p class="query-debug dim">
+      <code>{{ result.query.norm }}</code>
+      {% if result.query.stems %}· {{ result.query.stems | join(" ") }}{% endif %}
+      {% if result.query.intents %}· {{ result.query.intents | join(", ") }}{% endif %}
+      {% if result.query.error_codes %}· <strong>{{ result.query.error_codes | join(", ") }}</strong>{% endif %}
+    </p>
+  {% endif %}
+</section>
+
+{% if result and result.candidates %}
+  {% if result.action == "clarify" and result.clarification %}
+    <section class="card clarify">
+      <h2>{{ t.clarify_title or "Hangisi?" }}</h2>
+      <p class="question">{{ result.clarification.question }}</p>
+      <ul class="clarify-options">
+        {% for option in result.clarification.options %}
+          <li><a href="/r/{{ option.code }}"><span class="opt-answer">{{ option.answer }}</span>
+              <code class="opt-code">{{ option.code }}</code></a></li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endif %}
+
+  <ol class="results" id="results">
+    {% for c in result.candidates %}
+      {% set pct = (c.score * 100) | round | int %}
+      <li class="result{% if loop.first and result.action == 'open' %} result-top{% endif %}">
+        <a href="{% if c.tier == 'runbook' %}/r/{{ c.code }}{% else %}/r/{{ c.code }}{% endif %}"
+           data-index="{{ loop.index }}">
+          <span class="score" title="{{ t.confidence or 'Güven' }}: {{ pct }}%">
+            <span class="score-bar"><span class="score-fill" style="width: {{ pct }}%"></span></span>
+            <span class="score-pct">{{ pct }}%</span>
+          </span>
+          <span class="result-body">
+            <span class="result-title">
+              <kbd class="hint">{{ loop.index }}</kbd>
+              <code class="code">{{ c.code }}</code>
+              {{ c.title }}
+            </span>
+            <span class="result-meta dim">
+              {{ c.category }} ·
+              <span class="tier tier-{{ c.tier }}">{{ t['tier_' ~ c.tier] or c.tier }}</span> ·
+              <span class="badge badge-{{ c.verification }}">{{ t['verif_' ~ c.verification] or c.verification }}</span>
+              {% if c.summary %}<br>{{ c.summary }}{% endif %}
+            </span>
+          </span>
+        </a>
+      </li>
+    {% endfor %}
+  </ol>
+
+{% elif result %}
+  <section class="card empty">
+    <h2>{{ t.no_result_title or "Sonuç yok" }}</h2>
+    <p>{{ t.no_result_body or "Bu arama hiçbir kayda eşleşmedi. Sorgu bilgi boşlukları raporuna kaydedildi — bir sonraki runbook bu olabilir." }}</p>
+    <p><a href="/browse">{{ t.browse_instead or "Kategorilere gözat" }}</a></p>
+  </section>
+
+{% else %}
+  <section class="landing">
+    {% if recent %}
+      <div class="card">
+        <h2>{{ t.recent or "Son kullanılanlar" }}</h2>
+        <ul class="chip-list">
+          {% for r in recent %}
+            <li><a class="chip" href="/r/{{ r.code }}"><code>{{ r.code }}</code> {{ r.title }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <h2>{{ t.categories or "Kategoriler" }}</h2>
+      <ul class="chip-list">
+        {% for c in categories if c.record_count %}
+          <li><a class="chip" href="/browse?category={{ c.code }}">{{ c.code }}
+              <span class="count">{{ c.record_count }}</span></a></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <p class="dim shortcuts">
+      <kbd>/</kbd> {{ t.kbd_search or "ara" }} ·
+      <kbd>1</kbd>–<kbd>9</kbd> {{ t.kbd_pick or "sonuç seç" }} ·
+      <kbd>Esc</kbd> {{ t.kbd_clear or "temizle" }}
+      {% if build.compiled_at %}<br>{{ t.compiled_at or "Derleme" }}: {{ build.compiled_at }}
+        ({{ build.record_count }} {{ t.records or "kayıt" }}){% endif %}
+    </p>
+  </section>
+{% endif %}
+{% endblock %}

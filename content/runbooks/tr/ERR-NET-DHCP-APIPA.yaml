@@ -1,0 +1,34 @@
+code: ERR-NET-APIPA
+tier: reference
+title: "169.254.x.x adresi — DHCP'den adres alınamadı (APIPA)"
+category: ag/baglanti
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+
+tags: [dhcp, apipa, ip]
+
+aliases:
+  - { term: "169.254",              kind: hata_kodu, weight: 1.5 }
+  - { term: "apipa adresi",         kind: hata_kodu, weight: 1.4 }
+  - { term: "otomatik özel ip adresi", kind: hata_kodu, weight: 1.2 }
+  - { term: "ip alamıyor sınırlı bağlantı", kind: belirti, weight: 1.0 }
+
+likely_causes:
+  - "DHCP sunucusuna ulaşılamıyor (kablo, switch portu veya VLAN)"
+  - "DHCP havuzunda boş adres kalmamış"
+  - "Yanlış VLAN'a düşmüş bir switch portu"
+  - "Ağ adaptörü sürücüsü veya adaptörün kendisi arızalı"
+  - "Ağda yetkisiz bir DHCP sunucusu (rogue DHCP) varsa çakışma"
+
+fix_summary: |
+  169.254 ile başlayan bir adres, Windows'un DHCP'den cevap alamayınca
+  kendine verdiği adrestir — yani sorun cihazın IP ayarlarında değil,
+  DHCP'ye ulaşmasındadır. Önce `ipconfig /release && ipconfig /renew`
+  dene. Aynı prizdeki başka bir cihaz da adres alamıyorsa bu bir kullanıcı
+  arızası değil altyapı arızasıdır; tek tek cihazlarla uğraşmayı bırak ve
+  ağ ekibini ara.
+
+related_runbook: NET-001

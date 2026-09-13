@@ -1,0 +1,36 @@
+code: ERR-AD-4740
+tier: reference
+title: "Event ID 4740 — kullanıcı hesabı kilitlendi"
+category: hesap/kimlik
+severity: orta
+status: yayinda
+verification: incelendi
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+
+tags: [active-directory, kilit, olay-kaydi]
+
+aliases:
+  - { term: "event id 4740",        kind: hata_kodu, weight: 1.5 }
+  - { term: "4740 olay kaydı",      kind: hata_kodu, weight: 1.3 }
+  - { term: "hesap kilitlenme kaydı", kind: belirti, weight: 1.0 }
+
+likely_causes:
+  - "Telefon veya tablette eski parolayla kayıtlı kurumsal e-posta hesabı"
+  - "Credential Manager'da kalmış eski kimlik bilgisi"
+  - "Kullanıcı adına çalışan planlanmış görev veya Windows servisi"
+  - "Eşlenmiş ağ sürücüsü eski parolayla yeniden bağlanmaya çalışıyor"
+  - "Açık kalmış bir uzak masaüstü oturumu"
+
+fix_summary: |
+  4740 olayı hesabın kilitlendiğini söyler; asıl bilgi olayın içindeki
+  **çağıran bilgisayar adıdır** — kilidi kim tetikledi. Kaynağı bulmadan
+  kilidi açmak işe yaramaz, hesap birkaç dakika içinde yeniden kilitlenir.
+  Önce kaynak cihazdaki eski kimlik bilgisini temizle, sonra kilidi aç.
+
+source:
+  name: "Microsoft Learn — Audit Account Lockout (Event 4740)"
+  url: "https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4740"
+  note: "Bağlantı verildi, metin kopyalanmadı."
+
+related_runbook: ACC-001

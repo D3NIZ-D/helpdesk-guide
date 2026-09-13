@@ -1,0 +1,46 @@
+# ─────────────────────────────────────────────────────────────────────
+# T3 REFERENCE — one card: symptom, likely causes, fix
+#
+# For the long tail: error codes, STOP codes, printer codes, product
+# quirks.  These are rarely ambiguous -- 0x0000007B has one meaning --
+# so there is nothing to branch on and nothing to check off.
+#
+# Licensing matters most in this tier (design doc section 22.6).  Write
+# your OWN two or three sentences and LINK to the authoritative source.
+# Do not paste vendor documentation: it is a licence violation and it
+# rots the moment the vendor updates the page.
+#
+# Writing time: 5-15 minutes.
+# Scaffold one with:  helpdesk new --tier reference --code ERR-WIN-0X7B
+# ─────────────────────────────────────────────────────────────────────
+
+code: XXX-000
+tier: reference
+title: "REPLACE_TITLE"
+category: REPLACE_CATEGORY
+severity: orta
+status: taslak
+verification: taslak             # 'otomatik' kayıtlar yayınlanamaz
+author: "REPLACE_AUTHOR"
+reviewed_at: REPLACE_DATE
+
+aliases:
+  - { term: "0x00000000",        kind: hata_kodu, weight: 1.5 }
+  - { term: "ERROR_NAME_HERE",   kind: hata_kodu, weight: 1.5 }
+  - { term: "kullanıcı ağzından belirti", kind: belirti }
+
+likely_causes:
+  - "En olası neden, tek satır"
+  - "İkinci olasılık"
+  - "Üçüncü olasılık"
+
+fix_summary: |
+  İki üç cümlede ne yapılacağı. Kendi cümlelerinle yaz.
+  Uzun prosedür gerekiyorsa bu bir guide veya runbook olmalı, kart değil.
+
+source:
+  name: "Kaynağın adı"
+  url: "https://..."
+  note: "Bağlantı verildi, metin kopyalanmadı."
+
+related_runbook: XXX-000

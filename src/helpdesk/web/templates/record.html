@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ record.code }} · {{ record.title }}{% endblock %}
+
+{% block content %}
+<article class="record">
+  <header class="record-head">
+    <div>
+      <code class="code">{{ record.code }}</code>
+      <h1>{{ record.title }}</h1>
+      <p class="record-meta dim">
+        {{ record.category_code }} ·
+        <span class="tier tier-{{ record.tier }}">{{ t['tier_' ~ record.tier] or record.tier }}</span> ·
+        <span class="badge badge-{{ record.verification }}">{{ t['verif_' ~ record.verification] or record.verification }}</span> ·
+        {{ t['sev_' ~ record.severity] or record.severity }}
+        {% if record.review_due %} · {{ t.review_due or "Gözden geçirme" }}: {{ record.review_due }}{% endif %}
+      </p>
+    </div>
+    {% if record.tier == "runbook" %}
+      <form method="post" action="/run/{{ record.code }}">
+        <button type="submit" class="primary big">▶ {{ t.start_walk or "Adım adım başlat" }}</button>
+      </form>
+    {% endif %}
+  </header>
+
+  {% if record.verification in ("draft", "generated") %}
+    <div class="banner banner-warn">
+      <strong>{{ t.unverified or "Doğrulanmamış içerik" }}</strong>
+      {{ t.unverified_body or "Bu kayıt sahada test edilmedi. Adımları uygulamadan önce kendi bilgine göre doğrula." }}
+    </div>
+  {% endif %}
+
+  {% if record.summary %}<p class="lede">{{ record.summary }}</p>{% endif %}
+
+  {% if record.tier == "guide" %}
+    <ol class="checklist">
+      {% for step in record.steps %}
+        <li class="check-item{% if step.risk != 'low' %} risk-{{ step.risk }}{% endif %}">
+          <label>
+            <input type="checkbox" class="check" data-key="{{ record.code }}:{{ step.order_idx }}">
+            <span class="check-title">{{ step.title }}</span>
+          </label>
+          {% if step.note %}<p class="check-note dim">{{ step.note }}</p>{% endif %}
+          {% if step.body_md %}<div class="prose">{{ step.body_md | markdown | safe }}</div>{% endif %}
+          {% if step.requires_admin %}<span class="tag">{{ t.warn_admin or "Yönetici" }}</span>{% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+
+  {% elif record.tier == "reference" %}
+    {% if record.likely_causes %}
+      <h2>{{ t.likely_causes or "Olası nedenler" }}</h2>
+      <ul class="causes">{% for cause in record.likely_causes %}<li>{{ cause }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if record.fix_summary %}
+      <h2>{{ t.fix or "Çözüm" }}</h2>
+      <div class="prose">{{ record.fix_summary | markdown | safe }}</div>
+    {% endif %}
+    {% if record.source %}
+      <p class="source dim">
+        {{ t.source or "Kaynak" }}:
+        {% if record.source.url %}<a href="{{ record.source.url }}" rel="noopener noreferrer nofollow" target="_blank">{{ record.source.name or record.source.url }}</a>
+        {% else %}{{ record.source.name }}{% endif %}
+        {% if record.source.note %}<br>{{ record.source.note }}{% endif %}
+      </p>
+    {% endif %}
+
+  {% else %}
+    <h2>{{ t.decision_tree or "Karar ağacı" }}</h2>
+    <p class="dim">{{ t.tree_note or "Ağacın tamamı. Gerçek bir vakada yukarıdaki düğmeden adım adım yürüt." }}</p>
+    <pre class="tree" id="tree" data-url="/r/{{ record.code }}/tree">{{ t.loading or "Yükleniyor…" }}</pre>
+  {% endif %}
+
+  {% if related %}
+    <h2>{{ t.related or "İlgili kayıtlar" }}</h2>
+    <ul class="chip-list">
+      {% for r in related %}
+        <li><a class="chip" href="/r/{{ r.code }}"><code>{{ r.code }}</code> {{ r.title }}</a></li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="record-actions">
+    <button type="button" class="ghost feedback" data-kind="worked" data-code="{{ record.code }}">
+      👍 {{ t.fb_worked or "İşe yaradı" }}</button>
+    <button type="button" class="ghost feedback" data-kind="did_not_work" data-code="{{ record.code }}">
+      👎 {{ t.fb_failed or "İşe yaramadı" }}</button>
+    <button type="button" class="ghost feedback" data-kind="content_error" data-code="{{ record.code }}">
+      ⚑ {{ t.report_content or "İçerik hatalı" }}</button>
+  </div>
+</article>
+{% endblock %}

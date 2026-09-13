@@ -1,0 +1,55 @@
+# Optional but recommended:  pip install pre-commit && pre-commit install
+#
+# The first hook is the important one. `content-local/` is git-ignored, but
+# `git add -f` overrides that, and a private runbook committed once stays in
+# the history forever. Belt and braces.
+
+repos:
+  - repo: local
+    hooks:
+      - id: no-content-local
+        name: refuse to commit content-local/
+        entry: >-
+          bash -c 'echo "REFUSED: content-local/ is site-private and must never
+          be committed. If you really meant to publish this record, move it to
+          content/ first." && exit 1'
+        language: system
+        files: '^content-local/(?!README\.md$)'
+        pass_filenames: false
+
+      - id: content-lint
+        name: validate content (schema, graph, secrets)
+        entry: helpdesk lint --strict
+        language: system
+        files: '^content/.*\.ya?ml$'
+        pass_filenames: false
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      # Repository-wide secret scan. The compiler scans runbook *content*;
+      # this catches everything else — a token pasted into a test fixture,
+      # a .env that slipped through.
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        exclude: '^\.github/workflows/'   # GitHub Actions uses YAML extensions
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-merge-conflict
+      - id: detect-private-key

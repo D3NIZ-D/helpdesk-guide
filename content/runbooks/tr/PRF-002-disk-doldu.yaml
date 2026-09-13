@@ -1,0 +1,58 @@
+code: PRF-002
+tier: guide
+title: "Disk doldu uyarısı / C sürücüsünde yer kalmadı"
+summary: "Sistem diski doldu; Windows uyarı veriyor ve uygulamalar hata veriyor."
+category: performans/disk
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 540
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [disk, yer, temizlik]
+
+aliases:
+  - { term: "disk doldu",              kind: belirti, weight: 1.0 }
+  - { term: "c sürücüsü doldu",        kind: belirti, weight: 1.0 }
+  - { term: "yer kalmadı uyarısı",     kind: belirti, weight: 1.0 }
+  - { term: "yetersiz disk alanı",     kind: hata_kodu, weight: 1.1 }
+  - { term: "kırmızı disk çubuğu",     kind: belirti, weight: 0.8 }
+
+steps:
+  - title: "Disk Temizleme'yi sistem dosyalarıyla birlikte çalıştır"
+    note: >
+      `cleanmgr` → "Sistem dosyalarını temizle". Windows Update temizliği
+      tek başına sık sık 10-20 GB kazandırır.
+    requires_admin: true
+    est_seconds: 600
+
+  - title: "Neyin yer kapladığını ölç, tahmin etme"
+    note: >
+      Ayarlar → Sistem → Depolama → Depolama kullanımı. Ölçmeden silmeye
+      başlamak, önemli veriyi silme riskidir.
+    est_seconds: 120
+
+  - title: "Kullanıcı profilindeki büyük klasörleri kontrol et"
+    note: >
+      İndirilenler, Masaüstü, OneDrive önbelleği ve Teams önbelleği.
+      Kullanıcıya sor, kendi başına silme.
+    est_seconds: 300
+
+  - title: "Eski kullanıcı profillerini ve geçici dosyaları temizle"
+    note: >
+      Paylaşılan makinelerde eski profiller onlarca GB tutabilir.
+      Sistem Özellikleri → Kullanıcı Profilleri üzerinden kaldır.
+    requires_admin: true
+    risk: orta
+    est_seconds: 600
+
+  - title: "Kalıcı çözüm gerekiyorsa OneDrive İsteğe Bağlı Dosyalar'ı aç"
+    note: >
+      Disk yeniden dolacaksa asıl çözüm budur; her ay temizlik yapmak
+      çözüm değil, bakım borcudur.
+    est_seconds: 300

@@ -1,0 +1,147 @@
+# Device and fault vocabulary (English).
+#
+# English needs far less of this than Turkish does -- there is no
+# agglutination to absorb -- so this file exists mainly to give the
+# English content the same synonym expansion and intent classification,
+# not to compensate for morphology.
+
+devices:
+  monitor:
+    terms: [monitor, screen, display, panel, lcd, external display, second screen]
+  computer:
+    terms: [computer, pc, desktop, tower, machine, workstation, box]
+  laptop:
+    terms: [laptop, notebook, portable]
+  dock:
+    terms: [dock, docking station, hub, usb hub, usb-c hub, port replicator]
+  cable:
+    terms: [cable, hdmi, displayport, dp, vga, dvi, usb-c, type-c, thunderbolt,
+            video cable, display cable]
+  power:
+    terms: [power supply, adapter, charger, psu, power cable, outlet, socket,
+            power strip, extension lead, surge protector]
+  printer:
+    terms: [printer, print, laser printer, inkjet, scanner, copier, mfp,
+            multifunction]
+  network:
+    terms: [network, internet, connection, ethernet, lan, wifi, wi-fi, wireless,
+            wired, modem, router, switch, access point]
+  vpn:
+    terms: [vpn, remote access, tunnel, forticlient, globalprotect, anyconnect,
+            openvpn, wireguard]
+  account:
+    terms: [account, user, username, password, credentials, domain account,
+            active directory]
+  mfa:
+    terms: [mfa, 2fa, two factor, multifactor, authenticator, verification code,
+            otp, token]
+  email:
+    terms: [email, e-mail, mail, outlook, exchange, webmail, owa, inbox, mailbox,
+            m365, office 365, microsoft 365]
+  audio:
+    terms: [sound, audio, speaker, headset, headphones, microphone, mic]
+  peripheral:
+    terms: [keyboard, mouse, touchpad, trackpad, usb device, peripheral]
+  storage:
+    terms: [disk, hard disk, hdd, ssd, nvme, storage, c drive, flash drive,
+            usb stick]
+  os:
+    terms: [windows, operating system, os, win11, win10, macos, mac, linux, ubuntu]
+  security:
+    terms: [antivirus, defender, quarantine, malware, virus, ransomware,
+            phishing, suspicious email, scam]
+  share:
+    terms: [shared folder, mapped drive, network drive, file share, file server,
+            unc path]
+
+faults:
+  NO_DISPLAY:
+    terms: [no display, no signal, black screen, blank screen, nothing on screen,
+            screen is dark, no picture, display not working]
+  NO_POWER:
+    terms: [no power, wont turn on, will not turn on, no lights,
+            not charging, wont charge, shuts down by itself, powers off]
+  NO_BOOT:
+    terms: [wont boot, will not boot, blue screen, bsod, stuck at logo,
+            boot loop, recovery, automatic repair, inaccessible boot device]
+  NO_NETWORK:
+    terms: [no internet, cant connect, cannot connect, connection drops,
+            wifi not connecting, no ip, limited connectivity, dns error,
+            vpn not connecting, cant reach the share]
+  NO_SOUND:
+    terms: [no sound, no audio, cant hear, mic not working, microphone not working,
+            they cant hear me, headset not working]
+  PRINTING:
+    terms: [not printing, no output, stuck in queue, paper jam, not pulling paper,
+            prints blank, faded print, toner empty, printer offline,
+            printer not found, cannot add printer]
+  IDENTITY:
+    terms: [password rejected, account locked, cant log in, cannot sign in,
+            forgot password, password expired, authentication failed,
+            mfa not working, no verification code, access denied]
+  SLOW:
+    terms: [slow, very slow, freezing, hangs, lagging, not responding,
+            takes forever, disk full, out of space, out of memory, overheating]
+  SECURITY:
+    terms: [suspicious email, phishing, fake invoice, malware found, virus alert,
+            quarantined, ransomware, files encrypted, i clicked the link,
+            i entered my details, account compromised]
+  ERROR_MESSAGE:
+    terms: [error, error code, exception, warning message, it says]
+  NOT_WORKING:
+    terms: [not working, broken, faulty, doesnt work, does not work, no response,
+            not detected, not recognised, not recognized, disappeared]
+
+abbreviations:
+  bsod: blue screen
+  osd: monitor menu
+  ad: active directory
+  dc: domain controller
+  gpo: group policy
+  rdp: remote desktop
+  nas: network storage
+  dhcp: automatic ip
+  dns: name resolution
+  ups: uninterruptible power supply
+  mfp: multifunction printer
+
+stopwords:
+  - the
+  - a
+  - an
+  - my
+  - our
+  - his
+  - her
+  - their
+  - this
+  - that
+  - these
+  - those
+  - is
+  - are
+  - was
+  - were
+  - be
+  - been
+  - i
+  - we
+  - it
+  - and
+  - or
+  - but
+  - for
+  - with
+  - to
+  - of
+  - in
+  - on
+  - at
+  - please
+  - help
+  - issue
+  - problem
+  - urgent
+  - hi
+  - hello
+  - thanks

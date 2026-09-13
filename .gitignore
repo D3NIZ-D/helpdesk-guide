@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────────────
+# Site-private content. This is the first line on purpose.
+#
+# content-local/ holds runbooks with internal hostnames, service names and
+# processes that belong to one organisation and nobody else. Committing it
+# once is not undoable — the history keeps it. A pre-commit hook backs this
+# up (see .pre-commit-config.yaml), because this is the one mistake with no
+# clean recovery.
+# ─────────────────────────────────────────────────────────────────────
+/content-local/**
+!/content-local/README.md
+!/content-local/.gitkeep
+
+# Compiled database and local state
+/data/
+*.db
+*.db-wal
+*.db-shm
+session.token
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.spec
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

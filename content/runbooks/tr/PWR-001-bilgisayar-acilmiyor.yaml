@@ -1,0 +1,138 @@
+code: PWR-001
+tier: runbook
+title: "Bilgisayar hiç açılmıyor"
+summary: "Güç düğmesine basılınca hiçbir tepki yok: ışık yok, fan yok, ses yok."
+category: donanim/guc
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows, macos, linux]
+  asset: [masaustu, laptop]
+
+tags: [guc, acilmiyor, psu, batarya]
+
+aliases:
+  - { term: "bilgisayar açılmıyor",   kind: belirti, weight: 1.0 }
+  - { term: "kasa hiç tepki vermiyor", kind: belirti, weight: 1.0 }
+  - { term: "hiç açılmıyor",          kind: belirti, weight: 1.0 }
+  - { term: "güç düğmesi çalışmıyor", kind: belirti, weight: 1.0 }
+  - { term: "laptop açılmıyor",       kind: belirti, weight: 1.0 }
+  - { term: "ışık bile yanmıyor",     kind: belirti, weight: 0.9 }
+  - { term: "computer wont turn on",  kind: belirti, weight: 0.9 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Güç düğmesine basınca herhangi bir belirti var mı?"
+    body_md: |
+      Kullanıcıdan güç düğmesine basmasını ve **dinlemesini** iste:
+      ışık, fan sesi, bip sesi, sabit disk sesi.
+
+      "Hiçbir şey olmuyor" ile "bir saniye yanıp sönüyor" tamamen farklı
+      iki arızadır.
+    est_seconds: 30
+    edges:
+      - { label: "Kesinlikle hiçbir şey — ışık yok, ses yok", to: N20 }
+      - { label: "Kısa süre yanıyor sonra sönüyor",           to: N40 }
+      - { label: "Fan çalışıyor ama ekran yok",               to: N50 }
+
+  - key: N20
+    type: talimat
+    title: "Güç kaynağını doğrula"
+    body_md: |
+      1. Güç kablosunu **iki uçtan da** çıkar, tak.
+      2. **Doğrudan duvar prizine** bağla; uzatma ve UPS'i devreden çıkar.
+      3. O prizde başka bir cihaz çalışıyor mu doğrula.
+      4. Masaüstünde güç kaynağının arkasındaki **0/1 anahtarını** kontrol et.
+      5. Laptopta: adaptörün LED'i yanıyor mu, şarj ışığı tepki veriyor mu?
+    verify_text: "Herhangi bir ışık veya fan sesi geldi mi?"
+    est_seconds: 180
+    edges:
+      - { label: "Açıldı",                to: N21 }
+      - { label: "Hâlâ hiçbir tepki yok", to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — güç kaynağı bağlantısı, priz veya UPS"
+    root_cause: GUC_KAYNAGI_BAGLANTI
+    closure_note: "Cihaza elektrik ulaşmıyordu."
+    followup_md: "Arızalı uzatma/UPS bulunduysa kullanımdan kaldır ve etiketle."
+
+  - key: N30
+    type: talimat
+    title: "Artık gücü boşalt (power drain)"
+    body_md: |
+      Kalıntı elektrik, anakartın açılmasını engelleyebilir:
+
+      **Masaüstü:** güç kablosunu çek, güç düğmesine 30 sn basılı tut,
+      kabloyu tak, dene.
+
+      **Laptop:** adaptörü çıkar, batarya sökülebiliyorsa çıkar, güç
+      düğmesine 30 sn basılı tut, takıp dene. Bataryası sökülemeyen
+      modellerde üreticinin reset deliği veya tuş kombinasyonu vardır.
+    verify_text: "Boşaltmadan sonra cihaz açıldı mı?"
+    risk: dusuk
+    est_seconds: 300
+    edges:
+      - { label: "Açıldı",       to: N31 }
+      - { label: "Yine açılmadı", to: N90 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — artık güç boşaltıldı"
+    root_cause: ARTIK_GUC
+    closure_note: "Kalıntı elektrik açılışı engelliyordu."
+
+  - key: N40
+    type: talimat
+    title: "Kısa süreli açılışı incele"
+    body_md: |
+      Bir saniye yanıp sönmek, güç kaynağının yükü kaldıramadığını veya
+      bir kısa devre olduğunu gösterir.
+
+      1. Cihazdan **tüm çevre birimlerini** çıkar (USB, ekran, dock,
+         harici disk) ve sadece güçle dene.
+      2. Masaüstünde bip kodlarını dinle ve say — kodu not al.
+      3. Anakart üzerinde şişmiş kondansatör veya yanık izi var mı bak.
+    verify_text: "Çevre birimleri çıkarılınca açık kalıyor mu?"
+    risk: orta
+    requires_user_downtime: true
+    est_seconds: 420
+    edges:
+      - { label: "Çevre birimi çıkarılınca açıldı", to: N41 }
+      - { label: "Yine kapanıyor",                  to: N90 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — arızalı çevre birimi güç kaynağını çekiyordu"
+    root_cause: CEVRE_BIRIMI_KISA_DEVRE
+    closure_note: "Bağlı bir aygıt aşırı akım çekiyordu."
+    followup_md: "Aygıtları teker teker takarak suçluyu bul ve kullanımdan kaldır."
+
+  - key: N50
+    type: eskalasyon
+    title: "Bu bir güç arızası değil — DSP-001'e geç"
+    body_md: |
+      Fan çalışıyor ve ışık yanıyorsa bilgisayar açılıyor demektir;
+      görünmeyen şey ekrandır.
+
+      Bu runbook'u kapat ve **DSP-001 Monitörde görüntü yok** ile devam et.
+    escalate_to: "DSP-001"
+
+  - key: N90
+    type: eskalasyon
+    title: "Donanım servisine eskale et"
+    body_md: |
+      Güç kaynağı, anakart veya güç düğmesi arızası olasılığı yüksek.
+      Bip kodu duyduysan **mutlaka özete yaz** — servis teşhisi büyük
+      ölçüde ona dayanır.
+    escalate_to: "L2-Donanim"
+
+related: [DSP-001, BOOT-001]

@@ -1,0 +1,60 @@
+code: APP-002
+tier: guide
+title: "Teams/toplantıda ses veya mikrofon çalışmıyor"
+summary: "Toplantıda karşı taraf duymuyor ya da kullanıcı ses duymuyor."
+category: donanim/ses
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 540
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [ses, mikrofon, teams, toplanti]
+
+aliases:
+  - { term: "mikrofonum çalışmıyor",   kind: belirti, weight: 1.0 }
+  - { term: "karşı taraf duymuyor",    kind: belirti, weight: 1.0 }
+  - { term: "toplantıda ses gelmiyor", kind: belirti, weight: 1.0 }
+  - { term: "kulaklık çalışmıyor",     kind: belirti, weight: 0.9 }
+  - { term: "sesim gitmiyor",          kind: belirti, weight: 0.9 }
+
+steps:
+  - title: "Fiziksel sessize alma düğmesini kontrol et"
+    note: >
+      Kulaklık kablosundaki veya kulaklık üzerindeki mute düğmesi.
+      Bu vakaların büyük kısmı burada biter ve sormadan geçilirse
+      yirmi dakika boşa gider.
+    est_seconds: 30
+
+  - title: "Uygulama içinde doğru cihaz seçili mi bak"
+    note: >
+      Teams → Ayarlar → Cihazlar. Windows'un varsayılanı ile uygulamanın
+      seçimi aynı olmak zorunda değil; ikisini de kontrol et.
+    est_seconds: 120
+
+  - title: "Windows ses ayarlarından cihazı ve seviyeyi doğrula"
+    note: >
+      Ses karıştırıcısında uygulamanın ayrı ayrı sessize alınmış
+      olabileceğini unutma.
+    est_seconds: 120
+
+  - title: "Mikrofon gizlilik iznini kontrol et"
+    note: >
+      Ayarlar → Gizlilik → Mikrofon. Kurumsal ilkeyle kapatılmış olabilir;
+      o durumda kullanıcı tarafında çözülmez.
+    est_seconds: 120
+
+  - title: "Kulaklığı başka bir porta veya cihaza tak"
+    note: >
+      Dock üzerinden bağlıysa doğrudan laptopa takarak dock'u eleme yap.
+    est_seconds: 180
+
+  - title: "Uygulamayı tamamen kapat ve yeniden aç"
+    note: >
+      Teams'i çarpıdan kapatmak yetmez; sistem tepsisinden çıkış yaptır.
+    est_seconds: 120

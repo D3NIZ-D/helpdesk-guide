@@ -1,0 +1,101 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "helpdesk-guide"
+version = "0.1.0"
+description = "Offline, step-by-step IT support troubleshooting assistant with Turkish-aware search"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "helpdesk-guide contributors" }]
+keywords = ["helpdesk", "itsm", "troubleshooting", "runbook", "support", "turkish", "offline"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: Turkish",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Systems Administration",
+]
+
+# The core -- compile, lint, search, run, report -- needs one dependency.
+# That is on purpose: a tool for the moment the network is down should not
+# have a long install path (design doc sections 3 and 19.6).
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+web = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "jinja2>=3.1",
+  "markdown-it-py>=3.0",
+  "python-multipart>=0.0.9",   # FastAPI needs this for the HTML forms the UI posts
+]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+  "httpx>=0.27",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+helpdesk = "helpdesk.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/OWNER/helpdesk-guide"
+Documentation = "https://github.com/OWNER/helpdesk-guide#readme"
+Issues = "https://github.com/OWNER/helpdesk-guide/issues"
+Changelog = "https://github.com/OWNER/helpdesk-guide/blob/main/CHANGELOG.md"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/helpdesk"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"content" = "helpdesk/_bundled_content"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/helpdesk", "content", "tests", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+# Third-party deprecations (starlette's TestClient, anyio's lazy imports)
+# are not ours to fix and turning them into errors only breaks the build
+# when a dependency is upgraded. Warnings raised by helpdesk itself stay
+# fatal.
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "error::DeprecationWarning:helpdesk",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+  "E501",    # line length is handled by the formatter
+  "B008",    # FastAPI's Depends() in defaults is the documented pattern
+  "RUF001",  # Turkish text legitimately contains look-alike Unicode
+  "RUF002",
+  "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E731"]
+"src/helpdesk/content/validator.py" = ["E731"]  # local `add` lambdas keep rules one line each
+# sqlite3.Row implements the sequence protocol, so `"col" in row` tests the
+# row's *values*. `in row.keys()` is the correct idiom here and SIM118's
+# autofix would silently introduce a bug.
+"src/helpdesk/core/matcher.py" = ["SIM118"]

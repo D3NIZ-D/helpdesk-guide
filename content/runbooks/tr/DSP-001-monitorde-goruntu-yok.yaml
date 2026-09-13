@@ -1,0 +1,305 @@
+# Enum değerleri Türkçe veya İngilizce yazılabilir; derleyici İngilizce
+# kanonik biçime çevirip öyle saklar. Türkçe içerikte Türkçe yazıyoruz.
+
+code: DSP-001
+tier: runbook
+title: "Monitörde görüntü yok"
+summary: "Monitör hiç görüntü vermiyor veya 'No Signal' gösteriyor."
+category: donanim/goruntu
+severity: orta
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows, macos, linux]
+  asset: [masaustu, laptop, dock]
+
+tags: [monitor, goruntu, no-signal, dock]
+
+aliases:
+  - { term: "monitör çalışmıyor",   kind: belirti, weight: 1.0 }
+  - { term: "ekran açılmıyor",      kind: belirti, weight: 1.0 }
+  - { term: "görüntü gelmiyor",     kind: belirti, weight: 1.0 }
+  - { term: "ekran siyah",          kind: belirti, weight: 0.9 }
+  - { term: "siyah ekran",          kind: belirti, weight: 0.9 }
+  - { term: "ekrana görüntü gelmiyor", kind: belirti, weight: 0.9 }
+  - { term: "no signal",            kind: hata_kodu, weight: 1.2 }
+  - { term: "sinyal yok",           kind: hata_kodu, weight: 1.2 }
+  - { term: "monitör kararıyor",    kind: belirti, weight: 0.7 }
+  - { term: "display yok",          kind: belirti, weight: 0.8 }
+  - { term: "monitor black screen", kind: belirti, weight: 0.7 }
+
+# "bilgisayar açılmıyor" üç farklı arızaya işaret eder; ayıran soru bu.
+disambiguation:
+  - question: "Kasadan fan sesi geliyor mu, ışık yanıyor mu?"
+    options:
+      - { answer: "Hayır, hiç tepki yok",                      to: PWR-001 }
+      - { answer: "Evet, çalışıyor ama ekranda hiçbir şey yok", to: DSP-001 }
+      - { answer: "Evet, logo geliyor ama Windows açılmıyor",   to: BOOT-001 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Monitörün güç LED'i yanıyor mu?"
+    body_md: |
+      Monitörün ön yüzünde veya alt çerçevesindeki güç ışığına bak.
+      Kullanıcıdan tarif etmesini iste: **rengi** ne, **sabit mi yanıp sönüyor mu**.
+
+      Bu tek gözlem, arızayı üç ayrı kola ayırır — atlama.
+    est_seconds: 20
+    edges:
+      - { label: "Hayır, hiç yanmıyor",         to: N20 }
+      - { label: "Evet, turuncu / yanıp sönüyor", to: N40 }
+      - { label: "Evet, beyaz veya mavi sabit",  to: N60 }
+
+  # ── Güç kolu ──────────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Güç zincirini kontrol et"
+    body_md: |
+      1. Güç kablosunu monitör ve priz tarafında **çıkar, tekrar tak**.
+      2. Uzatma veya priz grubu kullanılıyorsa monitörü **doğrudan duvar
+         prizine** bağla.
+      3. O prizde başka bir cihazın çalıştığını doğrula.
+    verify_text: "Güç LED'i yandı mı?"
+    est_seconds: 90
+    edges:
+      - { label: "LED yandı, görüntü de geldi", to: N21 }
+      - { label: "Hâlâ LED yok",                to: N30 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — güç bağlantısı veya priz kaynaklı"
+    root_cause: GUC_BAGLANTI
+    closure_note: "Gevşek güç kablosu ya da arızalı uzatma grubu."
+    followup_md: |
+      Arızalı uzatma grubu tespit edildiyse **kullanımdan kaldır** ve etiketle.
+      Aynı uzatmaya bağlı diğer cihazları da kontrol et.
+
+  - key: N30
+    type: talimat
+    title: "Güç kablosunu / adaptörünü çapraz test et"
+    body_md: |
+      Aynı model, çalıştığı bilinen bir monitörün güç kablosunu tak.
+      Harici adaptörlü modellerde adaptörü değiştir ve adaptörün kendi
+      LED'ine bak.
+    verify_text: "Başka bir kabloyla LED yandı mı?"
+    risk: dusuk
+    est_seconds: 180
+    edges:
+      - { label: "Başka kabloyla açıldı", to: N31 }
+      - { label: "Yine açılmadı",         to: N90 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — arızalı güç kablosu veya adaptörü"
+    root_cause: GUC_KABLO_ARIZA
+    closure_note: "Monitörün güç kablosu / adaptörü arızalı."
+    part_required: monitor_guc_kablosu
+
+  # ── Sinyal kolu ───────────────────────────────────────────────────
+  - key: N40
+    type: soru
+    title: "Ekranda 'No Signal' / 'Sinyal Yok' mesajı görünüyor mu?"
+    body_md: |
+      Turuncu veya yanıp sönen LED genelde **uyku modu** ya da **sinyal yok**
+      demektir. Monitörün menü tuşuna bas: OSD menüsü açılıyorsa panel ve arka
+      aydınlatma sağlamdır, sorun sinyal tarafındadır.
+    est_seconds: 30
+    edges:
+      - { label: "Evet, 'sinyal yok' yazıyor",          to: N50 }
+      - { label: "Hayır, tamamen siyah, OSD de açılmıyor", to: N90 }
+      - { label: "OSD açılıyor ama yanlış giriş seçili",  to: N45 }
+
+  - key: N45
+    type: talimat
+    title: "Monitör giriş kaynağını doğru porta al"
+    body_md: |
+      Monitör menüsünden **Input / Source** seçeneğine gir ve kablonun
+      **fiziksel olarak takılı olduğu** portu seç (HDMI-1, HDMI-2, DP, USB-C).
+
+      Otomatik algılama açıksa kapat ve elle seç — otomatik algılama boş
+      portlarda takılı kalabiliyor.
+    verify_text: "Doğru giriş seçilince görüntü geldi mi?"
+    est_seconds: 60
+    edges:
+      - { label: "Görüntü geldi", to: N46 }
+      - { label: "Gelmedi",       to: N52 }
+
+  - key: N46
+    type: cozum
+    title: "Çözüldü — yanlış giriş kaynağı seçiliydi"
+    root_cause: YANLIS_INPUT_SOURCE
+    closure_note: "Monitör başka bir giriş portunu dinliyordu."
+    followup_md: "Kullanıcıya monitör menüsünden kaynak değiştirmeyi göster."
+
+  - key: N50
+    type: soru
+    title: "Bilgisayar ile monitör arasında dock veya adaptör var mı?"
+    body_md: |
+      USB-C hub'lar, port çoğaltıcılar ve KVM anahtarları da dock sayılır.
+      Arada bir kutu varsa, arızanın en olası yeri orasıdır.
+    est_seconds: 20
+    edges:
+      - { label: "Evet, dock / hub / KVM var", to: N70 }
+      - { label: "Hayır, doğrudan bağlı",      to: N52 }
+
+  - key: N52
+    type: talimat
+    title: "Video kablosunu yeniden bağla ve çapraz test et"
+    body_md: |
+      Sırayla, her adımdan sonra kontrol ederek:
+
+      1. Kabloyu **iki uçtan da** çıkar, 10 sn bekle, sıkıca tak.
+         DisplayPort'ta klips mandalına dikkat et.
+      2. Bilgisayarda **farklı bir video portu** dene.
+      3. **Farklı bir kablo** ile dene — özellikle uzun veya ucuz HDMI
+         kablolarda kopukluk sık.
+      4. Monitörü **başka bir bilgisayara** bağlayarak monitörü izole et.
+    verify_text: "Hangi kombinasyonda görüntü geldi?"
+    est_seconds: 300
+    edges:
+      - { label: "Farklı kabloyla geldi", to: N53 }
+      - { label: "Farklı portla geldi",   to: N54 }
+      - { label: "Başka PC'de monitör çalıştı, kendi PC'sinde çalışmıyor", to: N80 }
+      - { label: "Başka PC'de de çalışmadı", to: N90 }
+
+  - key: N53
+    type: cozum
+    title: "Çözüldü — arızalı video kablosu"
+    root_cause: VIDEO_KABLO_ARIZA
+    closure_note: "Video kablosu sinyali taşımıyordu."
+    part_required: video_kablo
+    followup_md: |
+      Arızalı kabloyu **çöpe at**, çekmeceye koyma. Aynı kablo üç ay sonra
+      başka bir masada aynı arızayı üretir.
+
+  - key: N54
+    type: cozum
+    title: "Çözüldü — arızalı video portu (monitör veya GPU tarafı)"
+    root_cause: VIDEO_PORT_ARIZA
+    closure_note: "Bir video portu sinyal vermiyor, diğeri çalışıyor."
+    followup_md: |
+      Arızalı portu bantla etiketle. GPU tarafındaysa donanım kaydı aç —
+      genelde ikinci bir port da zamanla gider.
+
+  # ── Panel açık ama görüntü yok kolu ───────────────────────────────
+  - key: N60
+    type: soru
+    title: "LED sabit yanıyor ama ekran karanlık — OSD menüsü açılıyor mu?"
+    body_md: |
+      Monitörün menü tuşuna bas. Menü görünüyorsa panel ve arka aydınlatma
+      çalışıyor demektir; sorun sinyal veya parlaklık tarafındadır.
+    est_seconds: 30
+    edges:
+      - { label: "Menü görünüyor",     to: N61 }
+      - { label: "Menü de görünmüyor", to: N90 }
+
+  - key: N61
+    type: talimat
+    title: "Parlaklık ve görüntüleme modunu kontrol et"
+    body_md: |
+      1. Monitör OSD'sinden **parlaklığı yükselt** — sıfıra çekilmiş olabilir.
+      2. Windows'ta `Win + P` → **Genişlet** ve **Yalnızca ikinci ekran**
+         seçeneklerini sırayla dene.
+      3. `Win + Ctrl + Shift + B` ile grafik sürücüsünü sıfırla
+         (ekran bir saniye kararır, bu normal).
+      4. Ayarlar → Sistem → Ekran → **Algıla**.
+    verify_text: "Bu adımlardan birinde görüntü geldi mi?"
+    risk: dusuk
+    est_seconds: 120
+    edges:
+      - { label: "Görüntü geldi", to: N62 }
+      - { label: "Gelmedi",       to: N80 }
+
+  - key: N62
+    type: cozum
+    title: "Çözüldü — görüntüleme modu veya parlaklık ayarı"
+    root_cause: EKRAN_AYARI
+    closure_note: "Ekran kapalıya alınmış ya da parlaklık sıfırdaydı."
+    followup_md: "Kullanıcıya `Win + P` kısayolunu göster; en sık tekrar eden vaka bu."
+
+  # ── Dock kolu ─────────────────────────────────────────────────────
+  - key: N70
+    type: talimat
+    title: "Dock veya USB-C hub'ı devreden çıkar"
+    body_md: |
+      1. Dock'un **kendi güç adaptörünü** çıkar, 30 sn bekle, tak.
+      2. Monitörü dock yerine **doğrudan bilgisayara** bağla.
+      3. USB-C kablosunun **video (DP Alt Mode) desteklediğini** doğrula —
+         sadece şarj için üretilmiş kablolar görüntü taşımaz ve dışarıdan
+         ayırt edilemez.
+      4. Dock firmware sürümünü üretici aracıyla kontrol et.
+    verify_text: "Dock devre dışıyken görüntü geliyor mu?"
+    risk: orta
+    requires_user_downtime: true
+    est_seconds: 300
+    edges:
+      - { label: "Doğrudan bağlantıda görüntü var", to: N71 }
+      - { label: "Doğrudan bağlantıda da yok",      to: N52 }
+
+  - key: N71
+    type: cozum
+    title: "Çözüldü — dock arızası, firmware veya yanlış USB-C kablo"
+    root_cause: DOCK_ARIZA
+    closure_note: "Görüntü doğrudan bağlantıda geliyor, dock üzerinden gelmiyor."
+    followup_md: |
+      Dock firmware güncellemesi planla. Aynı model dock'ta tekrar ederse
+      toplu firmware çıkışı yap — tek tek çözmek üç kat zaman alıyor.
+
+  # ── Sürücü kolu ───────────────────────────────────────────────────
+  - key: N80
+    type: talimat
+    title: "Grafik sürücüsünü ve güç profilini kontrol et"
+    body_md: |
+      1. Aygıt Yöneticisi → Görüntü bağdaştırıcıları → sarı ünlem var mı?
+      2. Sürücüyü **üretici sitesinden** indir ve temiz kurulum yap.
+      3. Laptop'ta hibrit grafik varsa harici çıkışın hangi GPU'ya bağlı
+         olduğunu doğrula.
+      4. Güç seçeneklerinde **hızlı başlatmayı kapat**, tam kapatma yaptır.
+    verify_text: "Sürücü kurulumu sonrası yeniden başlatınca görüntü geldi mi?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Sürücü sorun çıkarırsa: Aygıt Yöneticisi → ilgili adaptör → Özellikler →
+      Sürücü sekmesi → **Sürücüyü Geri Al**. Geri alma seçeneği pasifse
+      Güvenli Mod'da önceki sürümü kur.
+    est_seconds: 900
+    edges:
+      - { label: "Çözüldü",   to: N81 }
+      - { label: "Çözülmedi", to: N90 }
+
+  - key: N81
+    type: cozum
+    title: "Çözüldü — grafik sürücüsü veya güç yönetimi"
+    root_cause: GPU_SURUCU
+    closure_note: "Sürücü bozuk ya da hızlı başlatma ekranı uyandırmıyordu."
+
+  # ── Eskalasyon ────────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "L2 / donanım servisine eskale et"
+    body_md: |
+      Yerinde çözülemedi. Aşağıdaki özeti vakaya ekle ve donanım ekibine
+      yönlendir. **Atlanan adım varsa mutlaka belirt** — L2 aynı adımı
+      tekrar denemesin diye.
+    escalate_to: "L2-Donanim"
+    summary_template: |
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}} — {{record_title}}
+      Bağlam: {{context}}
+
+      İzlenen adımlar:
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Atlanan: {{skipped_titles}}
+      Süre: {{duration_min}} dk ({{step_count}} adım)
+
+      Sonuç: Yerinde çözülemedi. Monitör ve GPU donanım testi gerekiyor.
+      {{closing}}

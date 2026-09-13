@@ -1,0 +1,141 @@
+code: BOOT-001
+tier: runbook
+title: "Windows açılmıyor / mavi ekran veriyor"
+summary: "Cihaz açılıyor ama işletim sistemi başlamıyor: mavi ekran, döngü veya kurtarma ekranı."
+category: donanim/onyukleme
+severity: yuksek
+status: yayinda
+verification: incelendi
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [boot, bsod, onyukleme, kurtarma]
+
+aliases:
+  - { term: "windows açılmıyor",         kind: belirti, weight: 1.0 }
+  - { term: "mavi ekran veriyor",        kind: belirti, weight: 1.1 }
+  - { term: "sürekli yeniden başlıyor",  kind: belirti, weight: 1.0 }
+  - { term: "logoda kalıyor",            kind: belirti, weight: 1.0 }
+  - { term: "otomatik onarım ekranı",    kind: belirti, weight: 1.0 }
+  - { term: "önyükleme aygıtı bulunamadı", kind: hata_kodu, weight: 1.2 }
+  - { term: "no boot device",            kind: hata_kodu, weight: 1.2 }
+  - { term: "bsod",                      kind: kisaltma, weight: 1.0 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Açılış hangi noktada duruyor?"
+    body_md: |
+      Kullanıcıdan ekranı tarif etmesini iste, mümkünse **telefonla fotoğraf
+      çektir**. Mavi ekrandaki durdurma kodu, sonraki her adımı belirler.
+    est_seconds: 60
+    edges:
+      - { label: "Üretici logosunda kalıyor / 'boot device' hatası", to: N20 }
+      - { label: "Mavi ekran, durdurma kodu görünüyor",              to: N30 }
+      - { label: "Otomatik onarım / kurtarma ekranı açılıyor",       to: N40 }
+
+  - key: N20
+    type: talimat
+    title: "Önyükleme aygıtını ve BIOS ayarlarını doğrula"
+    body_md: |
+      1. BIOS/UEFI'ye gir (genelde F2, F10 veya Del).
+      2. Sistem diski **listede görünüyor mu**? Görünmüyorsa donanım
+         arızası olasılığı yüksek.
+      3. Önyükleme sırasında doğru disk ilk sırada mı?
+      4. **SATA modu** (AHCI / RAID / IDE) yakın zamanda değişti mi?
+         Değiştiyse eski değerine döndür — bu tek başına en sık sebeptir.
+      5. Güvenli Önyükleme ve CSM ayarlarına dokunulmuş mu kontrol et.
+    verify_text: "Disk BIOS'ta görünüyor ve Windows başlıyor mu?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      BIOS'ta değiştirdiğin **her ayarı not al**. Açılış bozulursa
+      "Load Optimized Defaults" ile geri dön, sonra not ettiğin
+      değişiklikleri tek tek yeniden uygula. SATA modunu geri almadan
+      Windows açılmayabilir.
+    est_seconds: 600
+    edges:
+      - { label: "Ayar düzeltildi, Windows açıldı", to: N21 }
+      - { label: "Disk BIOS'ta hiç görünmüyor",     to: N90 }
+      - { label: "Disk görünüyor ama yine açılmıyor", to: N40 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — BIOS önyükleme ayarı veya SATA modu"
+    root_cause: BIOS_BOOT_AYARI
+    closure_note: "Önyükleme sırası ya da depolama denetleyici modu değişmişti."
+
+  - key: N30
+    type: olcum
+    title: "Durdurma kodunu (STOP code) oku ve kaydet"
+    body_md: |
+      Mavi ekranın altındaki kodu **tam olarak** yaz:
+      `INACCESSIBLE_BOOT_DEVICE`, `0x0000007B`, `CRITICAL_PROCESS_DIED`...
+
+      Kod bir referans kartına karşılık geliyorsa doğrudan oraya git —
+      `helpdesk search "<kod>"`. Kartlar bu tür arızalarda ağaçtan hızlıdır.
+    verify_text: "Durdurma kodu not edildi mi?"
+    est_seconds: 120
+    edges:
+      - { label: "Kod not edildi, karta bakıldı", to: N40 }
+      - { label: "Kod okunamıyor / çok hızlı geçiyor", to: N40 }
+
+  - key: N40
+    type: talimat
+    title: "Güvenli Mod ve son iyi yapılandırmayı dene"
+    body_md: |
+      1. Kurtarma ortamına gir (açılışta üç kez kesintiyle otomatik açılır).
+      2. **Başlangıç Onarımı**'nı çalıştır.
+      3. Olmazsa **Güvenli Mod**'da aç.
+      4. Güvenli Modda açılıyorsa: son yüklenen sürücü veya güncellemeyi
+         kaldır (`Programlar → Yüklü güncelleştirmeler`).
+      5. **Sistem Geri Yükleme** noktası varsa arıza öncesine dön.
+
+      Güvenli Modda açılıyor olması iyi haberdir: donanım sağlam,
+      sorun bir sürücü veya yazılımda.
+    verify_text: "Güvenli Modda açılıyor mu, normal modda açıldı mı?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Sistem Geri Yükleme geri alınabilir (aynı ekrandan "Geri yüklemeyi
+      geri al"). Ama **kullanıcı verisini yedeklemeden hiçbir onarım
+      adımına geçme** — kurtarma ortamındaki bazı seçenekler diski
+      biçimlendirir ve bu geri alınamaz.
+    est_seconds: 1200
+    edges:
+      - { label: "Normal modda açıldı", to: N41 }
+      - { label: "Sadece Güvenli Modda açılıyor", to: N90 }
+      - { label: "Hiç açılmıyor",       to: N90 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — sorunlu sürücü/güncelleme kaldırıldı veya geri yüklendi"
+    root_cause: BOZUK_SURUCU_GUNCELLEME
+    closure_note: "Bir sürücü ya da güncelleme önyüklemeyi bozuyordu."
+    followup_md: |
+      Aynı güncelleme başka cihazlarda da varsa dağıtımı **durdur** ve
+      test grubunda doğrula. Tek cihazı kurtarıp dağıtımı bırakmak,
+      ertesi gün yirmi çağrı demektir.
+
+  - key: N90
+    type: eskalasyon
+    title: "L2'ye eskale et — veri kurtarma riski var"
+    body_md: |
+      Bu noktadan sonrası veri kaybı riski taşır. L2'ye devret ve
+      **hiçbir biçimlendirme veya yeniden kurulum adımına geçme**.
+
+      Özete durdurma kodunu, denenen adımları ve cihazın diskinin
+      şifreli (BitLocker) olup olmadığını mutlaka yaz — kurtarma anahtarı
+      olmadan şifreli diske dokunmak veriyi kalıcı olarak kaybettirir.
+    escalate_to: "L2-Sistem"
+
+related: [PWR-001, DSP-001]

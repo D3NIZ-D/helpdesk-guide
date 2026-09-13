@@ -1,0 +1,118 @@
+# Device and component vocabulary (Turkish).
+#
+# Each key is a canonical concept; `terms` are the surface forms a user
+# might actually type -- including English loanwords, misspellings and
+# the words people use when they do not know the right one ("kasa" for a
+# desktop tower, "kutu" for anything with a power light).
+#
+# Everything here is folded to ASCII and lowercased at load time, so
+# "Monitör" and "monitor" are the same entry.  Synonyms expand the FTS
+# query: searching "ekran" also searches "monitor", "display" and "lcd".
+#
+# This is the cheap half of Turkish search (design doc section 8.1): a
+# rich vocabulary means the stemmer has less to get wrong.
+
+devices:
+  monitor:
+    weight: 1.0
+    terms: [monitör, monitor, ekran, display, lcd, led ekran, panel, göstergeç,
+            harici ekran, ikinci ekran, dış ekran]
+
+  bilgisayar:
+    terms: [bilgisayar, pc, kasa, masaüstü, desktop, makine, cihaz, sistem,
+            iş istasyonu, workstation]
+
+  laptop:
+    terms: [laptop, dizüstü, notebook, taşınabilir bilgisayar, diz üstü]
+
+  dock:
+    terms: [dock, docking, docking station, yerleştirme istasyonu, hub,
+            usb hub, usb-c hub, çoklayıcı, port çoğaltıcı]
+
+  kablo:
+    terms: [kablo, hdmi, displayport, dp, vga, dvi, usb-c, type-c, thunderbolt,
+            görüntü kablosu, video kablosu, ara kablo]
+
+  guc_kaynagi:
+    terms: [güç kaynağı, adaptör, şarj aleti, şarj cihazı, power supply, psu,
+            güç kablosu, priz, uzatma, uzatma kablosu, çoklu priz, akım korumalı priz]
+
+  yazici:
+    weight: 1.1
+    terms: [yazıcı, printer, lazer yazıcı, mürekkep püskürtmeli, çok fonksiyonlu,
+            tarayıcı, fotokopi, mfp, kopya makinesi, çıktı cihazı]
+
+  ag:
+    terms: [ağ, network, internet, interneti, bağlantı, ethernet, lan, wifi,
+            wi-fi, kablosuz, kablolu, modem, router, yönlendirici, switch,
+            access point, erişim noktası]
+
+  vpn:
+    terms: [vpn, uzak bağlantı, uzaktan bağlantı, tünel, forticlient,
+            globalprotect, anyconnect, openvpn, wireguard]
+
+  hesap:
+    terms: [hesap, kullanıcı, kullanıcı adı, account, şifre, parola, password,
+            domain hesabı, ad hesabı, active directory hesabı]
+
+  mfa:
+    terms: [mfa, 2fa, iki adımlı doğrulama, çok faktörlü, authenticator,
+            doğrulama kodu, otp, token, sms kodu]
+
+  eposta:
+    terms: [e-posta, eposta, mail, outlook, posta, exchange, webmail, owa,
+            mail kutusu, gelen kutusu, m365, office 365, microsoft 365]
+
+  toplanti:
+    terms: [teams, zoom, toplantı, meet, görüntülü görüşme, konferans,
+            webinar, online toplantı]
+
+  ses:
+    terms: [ses, hoparlör, kulaklık, mikrofon, headset, mic, audio, ses kartı,
+            ses aygıtı]
+
+  klavye_mouse:
+    terms: [klavye, mouse, fare, keyboard, imleç, touchpad, dokunmatik yüzey,
+            trackpad, çevre birimi, usb aygıt, usb cihaz]
+
+  disk:
+    terms: [disk, sabit disk, hdd, ssd, nvme, depolama, c sürücüsü, harddisk,
+            harici disk, flash bellek, usb bellek]
+
+  isletim_sistemi:
+    terms: [windows, işletim sistemi, os, win11, win10, windows 11, windows 10,
+            macos, mac, linux, ubuntu]
+
+  ofis_uygulamasi:
+    terms: [office, word, excel, powerpoint, onedrive, sharepoint, teams,
+            uygulama, program, yazılım]
+
+  tarayici_web:
+    terms: [chrome, edge, firefox, tarayıcı, browser, internet explorer, safari]
+
+  guvenlik:
+    terms: [antivirüs, antivirus, defender, karantina, zararlı, virüs, malware,
+            fidye yazılımı, ransomware, oltalama, phishing, şüpheli e-posta,
+            sahte mail, dolandırıcılık]
+
+  yazilim_surucu:
+    terms: [sürücü, driver, aygıt sürücüsü, firmware, bios, uefi, güncelleme,
+            yama, update]
+
+  paylasim:
+    terms: [paylaşılan klasör, ağ sürücüsü, mapped drive, paylaşım, dosya sunucusu,
+            file server, ortak klasör, netlogon, unc yolu]
+
+abbreviations:
+  bsod: mavi ekran
+  osd: monitör menüsü
+  ad: active directory
+  dc: etki alanı denetleyicisi
+  gpo: grup ilkesi
+  rdp: uzak masaüstü
+  nas: ağ depolama
+  dhcp: otomatik ip
+  dns: ad çözümleme
+  ups: kesintisiz güç kaynağı
+  kvm: klavye video fare anahtarı
+  mfp: çok fonksiyonlu yazıcı

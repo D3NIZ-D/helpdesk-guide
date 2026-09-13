@@ -1,0 +1,172 @@
+# ⚠ Bu runbook'un çıktısı genelde "çöz" değildir.
+#
+# Şüpheli e-posta akışı yanlış tasarlanırsa, teknisyeni "bir bakayım"
+# diyerek zararlı eki açmaya iten bir prosedür yazılmış olur. Bu ağaçta
+# hiçbir dal eki açmaya, bağlantıya tıklamaya veya göndereni yanıtlamaya
+# yönlendirmez. Amaç: durumu sınıflandır, kanıtı bozmadan ilet, eskale et.
+
+code: SEC-001
+tier: runbook
+title: "Şüpheli e-posta (oltalama) bildirimi"
+summary: "Kullanıcı şüpheli bir e-posta bildirdi; tıklamış olabilir veya olmayabilir."
+category: guvenlik/oltalama
+severity: kritik
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 90
+
+scope:
+  os: [windows, macos]
+  asset: [masaustu, laptop]
+
+tags: [guvenlik, phishing, oltalama, eposta]
+
+aliases:
+  - { term: "şüpheli e-posta geldi",   kind: belirti, weight: 1.0 }
+  - { term: "oltalama maili",          kind: belirti, weight: 1.0 }
+  - { term: "phishing maili",          kind: belirti, weight: 1.0 }
+  - { term: "sahte mail geldi",        kind: belirti, weight: 1.0 }
+  - { term: "dolandırıcılık e-postası", kind: belirti, weight: 0.9 }
+  - { term: "linke tıkladım",          kind: belirti, weight: 1.2 }
+  - { term: "şifremi girdim",          kind: belirti, weight: 1.3 }
+  - { term: "eki açtım",               kind: belirti, weight: 1.2 }
+  - { term: "sahte fatura maili",      kind: belirti, weight: 0.9 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Kullanıcı e-postadaki bir şeyle etkileşime girdi mi?"
+    body_md: |
+      **Bu soruyu önce sor. Başka hiçbir şey yapmadan.**
+
+      Etkileşim varsa bu artık bir "şüpheli mail bildirimi" değil,
+      muhtemel bir **güvenlik olayıdır** ve dakikalar önemlidir.
+
+      Kullanıcıya net sor, suçlayıcı olmadan — utanan kullanıcı gerçeği
+      söylemez ve gecikme asıl zararı yapar:
+
+      * Bağlantıya tıkladın mı?
+      * Açılan sayfaya kullanıcı adı/parola girdin mi?
+      * Eki açtın veya indirdin mi?
+      * Gönderene cevap verdin, bilgi paylaştın mı?
+
+      Kullanıcıya **mesajı silmemesini** söyle — kanıt gerekiyor.
+    est_seconds: 60
+    edges:
+      - { label: "Hayır, sadece gördü ve bildirdi", to: N20 }
+      - { label: "Evet, bağlantıya tıkladı ama bilgi girmedi", to: N30 }
+      - { label: "EVET, kimlik bilgisi girdi veya eki açtı",   to: N40 }
+      - { label: "Emin değil / hatırlamıyor",                  to: N40 }
+
+  # ── Etkileşim yok: raporla ve kapat ───────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Mesajı kanıt olarak ilet ve kullanıcıyı yönlendir"
+    body_md: |
+      Etkileşim yok. Yapılacak tek şey mesajı **bozmadan** güvenlik
+      ekibine ulaştırmak.
+
+      1. Kullanıcıya "Oltalamayı Bildir" düğmesini kullandır (varsa).
+         Yoksa mesajı **ek olarak** ilet (Outlook: Yeni mesaj →
+         Ekle → Öğe Ekle → Outlook Öğesi). Düz iletme (forward)
+         **başlıkları siler** ve analizi imkânsızlaştırır.
+      2. Kullanıcıya söyle: **tıklama, cevaplama, silme.**
+      3. Aynı mesajı başka kullanıcılar da aldıysa not et — toplu
+         kampanya olabilir.
+
+      Sen de eki açma, bağlantıyı tarayıcıda denemeye kalkma, URL'yi
+      "sadece bakmak için" ziyaret etme.
+    verify_text: "Mesaj ek olarak güvenlik ekibine iletildi mi?"
+    est_seconds: 300
+    edges:
+      - { label: "İletildi", to: N21 }
+
+  - key: N21
+    type: cozum
+    title: "Kapatıldı — oltalama bildirildi, etkileşim yok"
+    root_cause: OLTALAMA_BILDIRIMI
+    closure_note: "Kullanıcı doğru davrandı: tıklamadı, bildirdi."
+    followup_md: |
+      Kullanıcıya **teşekkür et ve bunu söyle.** Bildiren kullanıcıyı
+      ödüllendiren bir kültür, oltalamaya karşı hiçbir teknik kontrolün
+      sağlayamadığı bir savunma katmanıdır. Azarlanan kullanıcı bir
+      dahakine bildirmez.
+
+  # ── Tıkladı ama bilgi girmedi ─────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Cihazı kontrol et ve olayı bildir"
+    body_md: |
+      Tıklama tek başına da bir sızma girişimidir — bazı sayfalar
+      tarayıcı açığından yararlanır.
+
+      1. Olayı güvenlik ekibine **bildir** (kapatma değil, bildirme).
+      2. Cihazda tam antivirüs taraması başlat.
+      3. Tarayıcıda indirilmiş dosya var mı bak; varsa **açma**, yolunu not al.
+      4. Hangi URL'ye gidildiğini geçmişten al, **metin olarak** kaydet.
+      5. Kullanıcıya sor: sayfa bir şey indirmeye veya bir uygulama
+         açmaya çalıştı mı?
+    verify_text: "Tarama temiz mi ve olay güvenlik ekibine bildirildi mi?"
+    risk: orta
+    est_seconds: 600
+    edges:
+      - { label: "Tarama temiz, olay bildirildi", to: N31 }
+      - { label: "Tarama bir şey buldu",          to: N40 }
+
+  - key: N31
+    type: cozum
+    title: "Kapatıldı — tıklama oldu, bulgu yok, olay bildirildi"
+    root_cause: OLTALAMA_TIKLAMA
+    closure_note: "Kullanıcı tıkladı ama kimlik bilgisi vermedi; tarama temiz."
+    followup_md: |
+      Güvenlik ekibi kapanışı onaylayana kadar vakayı gerçekten kapatma.
+      Kullanıcıya kısa bir farkındalık hatırlatması gönder.
+
+  # ── Kimlik bilgisi verildi veya ek açıldı ─────────────────────────
+  - key: N40
+    type: eskalasyon
+    title: "GÜVENLİK OLAYI — hemen güvenlik ekibine eskale et"
+    body_md: |
+      **Bu bir arıza kaydı değil, bir güvenlik olayıdır. Bilet açıp
+      sıraya koyma — güvenlik ekibini şimdi ara.**
+
+      Sen beklerken, yalnızca yetkin dahilindekileri yap:
+
+      1. **Parolayı sıfırla** ve tüm aktif oturumları kapat
+         (mümkünse MFA yeniden kaydı da iste).
+      2. Cihazı **ağdan çıkar** — kabloyu çek veya Wi-Fi'yi kapat.
+         Kapatma, yeniden başlatma, silme yapma: bellekteki kanıt kaybolur.
+      3. Posta kutusunda **yeni yönlendirme kuralı** var mı bak; saldırganın
+         ilk yaptığı iş genelde budur.
+      4. Kullanıcının son 24 saatte gönderdiği e-postalara bak — hesap
+         zaten kampanyayı yaymaya başlamış olabilir.
+
+      **Yapma:** eki açma, dosyayı analiz etmeye çalışma, "önce bir
+      bakayım" deme, olayı kullanıcıyla çözmeye çalışma.
+    escalate_to: "Guvenlik-Ekibi (ACİL)"
+    summary_template: |
+      ⚠ GÜVENLİK OLAYI — OLTALAMA, ETKİLEŞİM GERÇEKLEŞTİ
+
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}}
+      Bağlam: {{context}}
+
+      Atılan adımlar:
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Atlanan: {{skipped_titles}}
+      Süre: {{duration_min}} dk
+
+      Yapılan acil önlemler L1 tarafından teyit edilmeli:
+        [ ] Parola sıfırlandı ve oturumlar kapatıldı
+        [ ] Cihaz ağdan izole edildi
+        [ ] Posta kutusu yönlendirme kuralları kontrol edildi
+        [ ] Gönderilmiş öğeler kontrol edildi
+
+      Gerekli bilgiler: gönderen adresi, konu başlığı, tıklanan URL,
+      ek dosya adı, olayın saati, kullanıcının tam olarak ne girdiği.
+      {{closing}}

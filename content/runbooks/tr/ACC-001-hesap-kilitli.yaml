@@ -1,0 +1,241 @@
+code: ACC-001
+tier: runbook
+title: "Hesap kilitli veya parola kabul edilmiyor"
+summary: "Kullanıcı oturum açamıyor; parola reddediliyor ya da hesap kilitlenmiş."
+category: hesap/kimlik
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows]
+  asset: [masaustu, laptop]
+
+tags: [hesap, parola, kilit, active-directory]
+
+aliases:
+  - { term: "hesabım kilitlendi",        kind: belirti, weight: 1.0 }
+  - { term: "hesap kilitli",             kind: belirti, weight: 1.0 }
+  - { term: "şifre kabul etmiyor",       kind: belirti, weight: 1.0 }
+  - { term: "parola kabul edilmiyor",    kind: belirti, weight: 1.0 }
+  - { term: "giriş yapamıyorum",         kind: belirti, weight: 0.9 }
+  - { term: "oturum açamıyorum",         kind: belirti, weight: 0.9 }
+  - { term: "şifremi unuttum",           kind: belirti, weight: 0.9 }
+  - { term: "kullanıcı adı veya parola hatalı", kind: hata_kodu, weight: 1.1 }
+  - { term: "account locked out",        kind: hata_kodu, weight: 1.0 }
+
+entry: N10
+
+nodes:
+  - key: N10
+    type: soru
+    title: "Ekranda tam olarak hangi mesaj çıkıyor?"
+    body_md: |
+      Kullanıcıdan mesajı **kelimesi kelimesine** okumasını iste. Üç mesaj
+      üç ayrı arızadır ve yanlış kola girmek 10 dakika kaybettirir:
+
+      * "Kullanıcı adı veya parola hatalı" → parola sorunu
+      * "Hesabınız kilitlenmiştir" → kilit
+      * "Parolanızın süresi doldu" → süre dolumu
+    est_seconds: 30
+    edges:
+      - { label: "Hesap kilitlenmiş",              to: N20 }
+      - { label: "Kullanıcı adı veya parola hatalı", to: N30 }
+      - { label: "Parolanın süresi dolmuş",        to: N40 }
+      - { label: "Bağlantı / etki alanı hatası",   to: N50 }
+
+  # ── Kilit kolu ────────────────────────────────────────────────────
+  - key: N20
+    type: talimat
+    title: "Kilidin kaynağını bul, sonra aç"
+    body_md: |
+      Kilidi hemen açma — sebebini bulmadan açarsan 5 dakika sonra
+      yeniden kilitlenir ve kullanıcı ikinci kez arar.
+
+      1. Kilit kaynağını sorgula (AD'de kilitlenme olayı, Event ID 4740).
+      2. Kullanıcıya sor: **telefonunda, tabletinde veya eski bir
+         cihazında** eski parolayla kayıtlı hesap var mı?
+      3. Eşlenmiş ağ sürücüsü, planlanmış görev veya kayıtlı kimlik
+         bilgisi (Credential Manager) eski parolayı deniyor olabilir.
+      4. Kaynağı temizle, **sonra** hesabın kilidini aç.
+
+      Yetkili hesapla giriş gerekiyorsa parola kasasındaki
+      **"Helpdesk-Unlock"** kaydını kullan.
+    verify_text: "Kilit açıldıktan sonra 5 dakika içinde tekrar kilitlendi mi?"
+    risk: orta
+    requires_admin: true
+    est_seconds: 420
+    edges:
+      - { label: "Açıldı, tekrar kilitlenmedi", to: N21 }
+      - { label: "Tekrar kilitlendi",           to: N22 }
+
+  - key: N21
+    type: cozum
+    title: "Çözüldü — hesap kilidi açıldı, kaynak temizlendi"
+    root_cause: HESAP_KILIT
+    closure_note: "Eski parolayı deneyen bir istemci hesabı kilitliyordu."
+    followup_md: |
+      Kullanıcıya hangi cihazın sebep olduğunu söyle. Söylemezsen aynı
+      vaka bir ay içinde geri gelir.
+
+  - key: N22
+    type: talimat
+    title: "Eski parolayı tutan istemcileri temizle"
+    body_md: |
+      Tekrar kilitleniyorsa kaynak hâlâ aktif:
+
+      1. Windows'ta `Denetim Masası → Kimlik Bilgileri Yöneticisi` →
+         kuruma ait tüm kayıtları sil.
+      2. Telefonda kurumsal e-posta hesabını kaldır, parola değiştikten
+         sonra yeniden ekle.
+      3. Kullanıcının adına çalışan planlanmış görev / servis var mı bak.
+      4. Eşlenmiş ağ sürücülerini kaldır, yeniden bağla.
+    verify_text: "Temizlikten sonra 15 dakika kilitlenme oldu mu?"
+    risk: orta
+    requires_admin: true
+    est_seconds: 600
+    edges:
+      - { label: "Kilitlenme durdu", to: N23 }
+      - { label: "Devam ediyor",     to: N90 }
+
+  - key: N23
+    type: cozum
+    title: "Çözüldü — kayıtlı eski kimlik bilgisi temizlendi"
+    root_cause: ESKI_KIMLIK_BILGISI
+    closure_note: "Bir istemci eski parolayı tekrar tekrar deniyordu."
+
+  # ── Parola kolu ───────────────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "En sık yapılan giriş hatalarını ele"
+    body_md: |
+      Parola sıfırlamadan önce 60 saniye harca; vakaların yarısı burada
+      biter:
+
+      1. **Caps Lock** ve klavye dili (TR/EN) — "i" ve "ı" farkı.
+      2. Kullanıcı adı biçimi: `kullanici` mi, `DOMAIN\kullanici` mı,
+         `kullanici@sirket.com` mı?
+      3. Yeni parola az önce mi değişti? Etki alanı denetleyicisine
+         yayılması birkaç dakika sürebilir.
+      4. Laptop ise: VPN olmadan **yeni parola henüz cihaza ulaşmamıştır**;
+         eski parolayla giriş yapıp sonra VPN'e bağlanmak gerekir.
+    verify_text: "Bu adımlardan biriyle giriş yapabildi mi?"
+    est_seconds: 120
+    edges:
+      - { label: "Giriş yaptı",  to: N31 }
+      - { label: "Hâlâ giremiyor", to: N32 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — giriş biçimi, klavye düzeni veya önbellek"
+    root_cause: GIRIS_HATASI
+    closure_note: "Parola doğruydu; kullanıcı adı biçimi veya klavye düzeni yanlıştı."
+
+  - key: N32
+    type: talimat
+    title: "Kimliği doğrula, sonra parolayı sıfırla"
+    body_md: |
+      **Önce kimlik doğrulaması, sonra sıfırlama.** Bu adımı atlamak,
+      sosyal mühendislikle hesap ele geçirmenin en kolay yoludur —
+      arayan kişinin iddia ettiği kişi olduğunu doğrulamadan parola
+      sıfırlanmaz.
+
+      1. Kurumun kimlik doğrulama prosedürünü uygula (geri arama,
+         yönetici onayı veya yüz yüze).
+      2. Parolayı sıfırla, **ilk girişte değiştirme** zorunluluğunu işaretle.
+      3. Geçici parolayı **kalıcı bir kanala yazma** — sohbet, e-posta
+         veya bilet notu olmaz. Sesli ilet.
+    verify_text: "Kullanıcı yeni parolayla giriş yapıp parolasını değiştirdi mi?"
+    risk: yuksek
+    requires_admin: true
+    rollback_md: |
+      Yanlış hesabın parolası sıfırlandıysa: hesap sahibine hemen haber
+      ver, olayı güvenlik ekibine bildir ve sıfırlamayı bilete kaydet.
+      Parola sıfırlama geri alınamaz — bu yüzden kimlik doğrulaması
+      isteğe bağlı değildir.
+    est_seconds: 600
+    edges:
+      - { label: "Giriş yaptı, parolasını değiştirdi", to: N33 }
+      - { label: "Sıfırlamaya rağmen giremiyor",       to: N90 }
+
+  - key: N33
+    type: cozum
+    title: "Çözüldü — parola sıfırlandı"
+    root_cause: PAROLA_SIFIRLAMA
+    closure_note: "Kimlik doğrulandıktan sonra parola sıfırlandı."
+    followup_md: |
+      Laptop kullanıcısıysa: yeni parolanın cihaza işlenmesi için
+      **VPN'e bağlıyken bir kez kilit ekranından giriş yapması** gerekir.
+      Söylenmezse ertesi sabah aynı çağrı gelir.
+
+  # ── Süre dolumu ───────────────────────────────────────────────────
+  - key: N40
+    type: talimat
+    title: "Kullanıcıya parolasını kendisi değiştirtt"
+    body_md: |
+      Süre dolumunda parola sıfırlamaya gerek yok; kullanıcı kendi
+      değiştirebilir:
+
+      1. Kilit ekranında `Ctrl + Alt + Del` → **Parola değiştir**.
+      2. Uzaktaysa önce VPN'e bağlan, sonra aynı adımı uygula.
+      3. Parola kuralları uymuyorsa hata mesajını okut — genelde geçmiş
+         parola tekrarı veya minimum yaş kuralıdır.
+    verify_text: "Yeni parola kabul edildi ve giriş yapıldı mı?"
+    est_seconds: 240
+    edges:
+      - { label: "Değiştirdi, giriş yaptı", to: N41 }
+      - { label: "Değiştiremiyor",          to: N32 }
+
+  - key: N41
+    type: cozum
+    title: "Çözüldü — parola süresi dolmuştu"
+    root_cause: PAROLA_SURESI
+    closure_note: "Kullanıcı parolasını kendisi yeniledi."
+
+  # ── Etki alanı kolu ───────────────────────────────────────────────
+  - key: N50
+    type: talimat
+    title: "Etki alanı güven ilişkisini kontrol et"
+    body_md: |
+      "Bu iş istasyonu ile birincil etki alanı arasındaki güven ilişkisi
+      başarısız oldu" mesajı parola sorunu değildir — bilgisayar hesabının
+      parolası bozulmuştur.
+
+      1. Cihazın ağa erişimi var mı doğrula.
+      2. Yerel yönetici ile giriş yap (kimlik bilgisi parola kasasında,
+         **"Local-Admin-Workstations"** kaydı).
+      3. PowerShell'de güven ilişkisini onar:
+         `Reset-ComputerMachinePassword -Server <DC> -Credential <yetkili>`
+      4. Yeniden başlat.
+    verify_text: "Yeniden başlattıktan sonra etki alanı hesabıyla giriş yapılabiliyor mu?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      İşlem başarısız olursa cihazı etki alanından çıkarıp yeniden ekleme
+      gerekebilir; bu **yerel profili etkiler**. Önce kullanıcı verisinin
+      yedeklendiğini doğrula, sonra devam et.
+    est_seconds: 900
+    edges:
+      - { label: "Giriş yapıldı", to: N51 }
+      - { label: "Düzelmedi",     to: N90 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — etki alanı güven ilişkisi onarıldı"
+    root_cause: DOMAIN_GUVEN
+    closure_note: "Bilgisayar hesabının parolası yeniden eşitlendi."
+
+  - key: N90
+    type: eskalasyon
+    title: "Kimlik yönetimi ekibine eskale et"
+    body_md: |
+      L1 yetkisiyle çözülemedi. Özete **hangi kimlik doğrulama adımlarının
+      yapıldığını** ve tam hata mesajını ekle.
+
+      Parola sıfırlandıysa bunu açıkça belirt — L2 aynı işlemi tekrar
+      yapmasın.
+    escalate_to: "L2-Kimlik"

@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  binaries:
+    name: binary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: helpdesk-linux-x86_64
+          - os: windows-latest
+            asset: helpdesk-windows-x86_64.exe
+          - os: macos-latest
+            asset: helpdesk-macos-arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e ".[web]" pyinstaller
+
+      - name: Compile content into the bundle
+        run: helpdesk compile --strict
+
+      - name: Build a single-file executable
+        shell: bash
+        run: |
+          pyinstaller --onefile --name helpdesk \
+            --add-data "content:content" \
+            --add-data "src/helpdesk/web:helpdesk/web" \
+            --add-data "src/helpdesk/db/schema.sql:helpdesk/db" \
+            src/helpdesk/__main__.py
+
+      - name: Rename and checksum
+        shell: bash
+        run: |
+          cd dist
+          if [ -f helpdesk.exe ]; then mv helpdesk.exe "${{ matrix.asset }}";
+          else mv helpdesk "${{ matrix.asset }}"; fi
+          shasum -a 256 "${{ matrix.asset }}" > "${{ matrix.asset }}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: |
+            dist/${{ matrix.asset }}
+            dist/${{ matrix.asset }}.sha256
+
+  publish:
+    needs: binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install build
+      - run: python -m build
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+            artifacts/*
+          generate_release_notes: true
+          body: |
+            Verify a download before running it:
+
+            ```
+            shasum -a 256 -c helpdesk-<platform>.sha256
+            ```

@@ -1,0 +1,257 @@
+code: NET-001
+tier: runbook
+title: "İnternete bağlanamıyor"
+summary: "Cihazda internet yok; tarayıcı açılmıyor veya 'sınırlı bağlantı' uyarısı var."
+category: ag/baglanti
+severity: yuksek
+status: yayinda
+verification: dogrulanmis
+author: "helpdesk-guide"
+reviewed_at: 2026-09-01
+review_period_days: 180
+
+scope:
+  os: [windows, macos]
+  asset: [masaustu, laptop]
+
+tags: [ag, internet, dhcp, dns, wifi]
+
+aliases:
+  - { term: "internete bağlanamıyorum", kind: belirti, weight: 1.0 }
+  - { term: "internet yok",             kind: belirti, weight: 1.0 }
+  - { term: "internet gitmiyor",        kind: belirti, weight: 0.9 }
+  - { term: "ağ bağlantısı yok",        kind: belirti, weight: 1.0 }
+  - { term: "sınırlı bağlantı",         kind: hata_kodu, weight: 1.1 }
+  - { term: "sarı ünlem işareti",       kind: belirti, weight: 1.0 }
+  - { term: "ip alamıyor",              kind: belirti, weight: 1.0 }
+  - { term: "site açılmıyor",           kind: belirti, weight: 0.8 }
+  - { term: "no internet access",       kind: hata_kodu, weight: 1.0 }
+
+# Bağlantı tipi bilindiğinde (varlık bağlamı doluysa) bu soru sorulmaz;
+# `karar` düğümü sessizce doğru kola geçer.
+entry: N05
+
+nodes:
+  # ── decision: sessiz dallanma, bağlamdan ──────────────────────────
+  - key: N05
+    type: karar
+    title: "Bağlantı tipini bağlamdan belirle"
+    body_md: |
+      Oturum bağlamında `conn=wifi` veya `conn=ethernet` varsa doğrudan
+      ilgili kola geçilir; yoksa teknisyene sorulur.
+    edges:
+      - { label: "Kablosuz",  to: N20, condition: 'conn == "wifi"' }
+      - { label: "Kablolu",   to: N30, condition: 'conn == "ethernet"' }
+      - { label: "Bilinmiyor", to: N10 }
+
+  - key: N10
+    type: soru
+    title: "Cihaz kabloyla mı, Wi-Fi ile mi bağlı?"
+    body_md: |
+      Görev çubuğundaki ağ simgesine bak. Kullanıcıya "kablo takılı mı"
+      diye sor — dock üzerinden bağlıysa kabloyu görmemiş olabilir.
+    est_seconds: 20
+    edges:
+      - { label: "Wi-Fi",                  to: N20 }
+      - { label: "Kablolu (Ethernet)",     to: N30 }
+      - { label: "Hiçbir ağ adaptörü görünmüyor", to: N60 }
+
+  # ── Wi-Fi kolu ────────────────────────────────────────────────────
+  - key: N20
+    type: soru
+    title: "Doğru Wi-Fi ağına bağlı görünüyor mu?"
+    body_md: |
+      Ağ listesini aç. "Bağlandı" yazıyor ama internet yoksa sorun genelde
+      DHCP veya DNS'tedir; hiç bağlanamıyorsa kimlik doğrulama veya sinyaldir.
+
+      Misafir ağına yanlışlıkla bağlanmak sık görülür — ağ adını yüksek
+      sesle okut.
+    est_seconds: 30
+    edges:
+      - { label: "Evet, bağlı ama internet yok", to: N40 }
+      - { label: "Hayır, bağlanamıyor / şifre hatası", to: N25 }
+      - { label: "Ağ listede hiç görünmüyor", to: N60 }
+
+  - key: N25
+    type: talimat
+    title: "Wi-Fi profilini unut ve yeniden bağlan"
+    body_md: |
+      1. Ağ listesinden ilgili ağa sağ tıkla → **Unut**.
+      2. Yeniden bağlan, parolayı elle gir (kopyala-yapıştır yapma —
+         sondaki boşluk sık hata kaynağı).
+      3. Kurumsal ağda 802.1X kullanılıyorsa sertifika uyarısını **kabul et**.
+
+      Kimlik bilgisi gerekiyorsa parola kasasındaki **"WiFi-Kurumsal"**
+      kaydına bak; parolayı buraya veya bilete yazma.
+    verify_text: "Yeniden bağlandıktan sonra internet geldi mi?"
+    est_seconds: 180
+    edges:
+      - { label: "Bağlandı, internet var", to: N26 }
+      - { label: "Hâlâ bağlanmıyor",       to: N90 }
+
+  - key: N26
+    type: cozum
+    title: "Çözüldü — bozuk Wi-Fi profili veya yanlış parola"
+    root_cause: WIFI_PROFIL
+    closure_note: "Kayıtlı profil bozulmuştu ya da parola değişmişti."
+
+  # ── Kablolu kol ───────────────────────────────────────────────────
+  - key: N30
+    type: talimat
+    title: "Fiziksel bağlantıyı doğrula"
+    body_md: |
+      1. Kabloyu **iki uçtan da** çıkar, tak; klipsin oturduğunu duy.
+      2. Ağ portundaki **link LED'ine** bak — yanmıyorsa sinyal yok demektir.
+      3. Kabloyu **başka bir duvar prizine** veya switch portuna al.
+      4. Dock üzerinden bağlıysa kabloyu **doğrudan laptopa** tak.
+    verify_text: "Link LED'i yanıyor mu, Windows 'ağ bağlandı' diyor mu?"
+    est_seconds: 180
+    edges:
+      - { label: "Bağlandı, internet geldi", to: N31 }
+      - { label: "Link var ama internet yok", to: N40 }
+      - { label: "Link LED'i hiç yanmıyor",   to: N90 }
+
+  - key: N31
+    type: cozum
+    title: "Çözüldü — kablo, priz veya dock kaynaklı"
+    root_cause: AG_FIZIKSEL
+    closure_note: "Fiziksel katmanda kopukluk vardı."
+    followup_md: |
+      Arızalı duvar prizi bulunduysa etiketle ve altyapıya bildir.
+      Aynı priz iki hafta sonra başka birinin sorunu olur.
+
+  # ── IP / DNS kolu ─────────────────────────────────────────────────
+  - key: N40
+    type: olcum
+    title: "IP adresini ve ağ geçidini oku"
+    body_md: |
+      Komut isteminde `ipconfig /all` çalıştır (macOS: `ifconfig`).
+
+      Neye bakacaksın:
+
+      * **169.254.x.x** → DHCP'den adres alınamamış (APIPA)
+      * **Ağ geçidi boş** → yönlendirici görünmüyor
+      * **Normal IP, ping geçiyor** → sorun DNS'te
+    verify_text: "IPv4 adresi ne ile başlıyor?"
+    est_seconds: 120
+    edges:
+      - { label: "169.254 ile başlıyor (adres alamamış)", to: N45 }
+      - { label: "Normal IP var, ağ geçidine ping gidiyor", to: N50 }
+      - { label: "Normal IP var ama ağ geçidine ping gitmiyor", to: N90 }
+
+  - key: N45
+    type: talimat
+    title: "DHCP kirasını yenile"
+    body_md: |
+      ```
+      ipconfig /release
+      ipconfig /renew
+      ```
+
+      Hâlâ 169.254 alıyorsa: aynı prizdeki/aynı ağdaki **başka bir cihazın**
+      adres alıp almadığını kontrol et. Alamıyorsa sorun cihazda değil,
+      DHCP sunucusunda veya VLAN yapılandırmasındadır.
+    verify_text: "Yenilemeden sonra geçerli bir IP alındı mı?"
+    risk: dusuk
+    requires_admin: true
+    est_seconds: 180
+    edges:
+      - { label: "Geçerli IP geldi, internet var", to: N46 }
+      - { label: "Yine 169.254, başka cihazlar çalışıyor", to: N90 }
+      - { label: "Başka cihazlar da alamıyor", to: N91 }
+
+  - key: N46
+    type: cozum
+    title: "Çözüldü — DHCP kirası yenilendi"
+    root_cause: DHCP_KIRA
+    closure_note: "Cihaz eski veya geçersiz bir kira tutuyordu."
+
+  - key: N50
+    type: talimat
+    title: "DNS çözümlemesini onar"
+    body_md: |
+      ```
+      ping 1.1.1.1          # IP ile erişim var mı
+      nslookup example.com  # ad çözümleniyor mu
+      ipconfig /flushdns
+      ```
+
+      IP'ye ping gidiyor ama ada gitmiyorsa sorun kesinlikle DNS'tir.
+      Adaptör ayarlarında elle girilmiş, artık geçersiz bir DNS sunucusu
+      olup olmadığına bak — en sık sebep bu.
+    verify_text: "nslookup bir adres döndürüyor mu, site açıldı mı?"
+    risk: dusuk
+    requires_admin: true
+    est_seconds: 240
+    edges:
+      - { label: "DNS düzeldi, siteler açılıyor", to: N51 }
+      - { label: "Düzelmedi",                     to: N90 }
+
+  - key: N51
+    type: cozum
+    title: "Çözüldü — DNS yapılandırması veya önbelleği"
+    root_cause: DNS_COZUMLEME
+    closure_note: "Yanlış DNS sunucusu ya da bozuk önbellek."
+    followup_md: |
+      Elle DNS girilmişse nereden geldiğini araştır — genelde eski bir
+      sorun giderme denemesinden kalır ve aylar sonra geri teper.
+
+  # ── Adaptör görünmüyor ────────────────────────────────────────────
+  - key: N60
+    type: talimat
+    title: "Ağ adaptörünü ve sürücüsünü kontrol et"
+    body_md: |
+      1. Aygıt Yöneticisi → Ağ bağdaştırıcıları → sarı ünlem veya eksik
+         aygıt var mı?
+      2. Adaptörü **devre dışı bırak, tekrar etkinleştir**.
+      3. Laptopta fiziksel/klavye **kablosuz kapatma anahtarını** kontrol et
+         (Fn + F2 gibi) ve Uçak Modu'nun kapalı olduğunu doğrula.
+      4. Gerekiyorsa sürücüyü üretici sitesinden yeniden kur.
+    verify_text: "Adaptör listede sağlıklı görünüyor ve ağları listeliyor mu?"
+    risk: yuksek
+    requires_admin: true
+    requires_user_downtime: true
+    rollback_md: |
+      Sürücü güncellemesi sonrası adaptör kaybolursa: Aygıt Yöneticisi →
+      İşlem → **Donanım değişikliklerini tara**, ardından Sürücü sekmesinden
+      **Sürücüyü Geri Al**. Kablolu bağlantı varsa önce onu kur, çünkü
+      sürücü indirmek için ağ gerekir.
+    est_seconds: 900
+    edges:
+      - { label: "Adaptör geri geldi, bağlandı", to: N61 }
+      - { label: "Adaptör hâlâ yok / çalışmıyor", to: N90 }
+
+  - key: N61
+    type: cozum
+    title: "Çözüldü — ağ adaptörü sürücüsü veya kablosuz anahtarı"
+    root_cause: AG_ADAPTOR
+    closure_note: "Adaptör devre dışıydı ya da sürücüsü bozulmuştu."
+
+  # ── Eskalasyonlar ─────────────────────────────────────────────────
+  - key: N90
+    type: eskalasyon
+    title: "Ağ ekibine eskale et — tek cihaz etkileniyor"
+    body_md: |
+      Cihaz tarafında yapılabilecekler tükendi. Ağ ekibine devret.
+      Özete **switch portunu ve priz numarasını** eklemeyi unutma.
+    escalate_to: "L2-Ag"
+
+  - key: N91
+    type: eskalasyon
+    title: "ACİL: Ağ ekibine eskale et — birden çok cihaz etkileniyor"
+    body_md: |
+      Birden fazla cihaz adres alamıyor. Bu bir kullanıcı arızası değil,
+      **altyapı arızası**. Tek tek cihazlarla uğraşmayı bırak:
+
+      1. Ağ ekibini **hemen** ara, bilet açılmasını bekleme.
+      2. Kaç kullanıcının etkilendiğini ve hangi kat/blok olduğunu söyle.
+      3. Servis masasına duyuru geçirt — aynı arıza için 20 çağrı gelmesin.
+    escalate_to: "L2-Ag (acil)"
+    summary_template: |
+      ⚠ TOPLU ARIZA ŞÜPHESİ
+      Belirti: {{query_raw}}
+      Runbook: {{record_code}} v{{version}}
+      {{#each steps}}  {{order}}. {{title}} → {{answer}}
+      {{/each}}
+      Birden çok cihaz DHCP'den adres alamıyor. Altyapı kontrolü gerekiyor.
+      Etkilenen konum ve kullanıcı sayısı bilete eklenmeli.

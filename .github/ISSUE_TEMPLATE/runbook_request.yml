@@ -1,0 +1,66 @@
+name: "📕 Runbook isteği / Runbook request"
+description: "Bir arıza için kayıt yok. / There is no record for a fault."
+title: "[runbook] "
+labels: ["content", "runbook-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Bu, `knowledge_gaps` raporunun dış dünyadaki karşılığıdır — hangi
+        içeriğin eksik olduğunu en iyi onu arayan kişi bilir.
+
+        *This is the outside-world equivalent of the `knowledge_gaps`
+        report: the person who searched for it knows best what is missing.*
+
+  - type: textarea
+    id: symptom
+    attributes:
+      label: "Belirti — kullanıcının söylediği gibi / Symptom, as the user said it"
+      description: "Düzeltmeden yaz. Aramanın eşleşmesi gereken ifade budur."
+      placeholder: "monitorum calismiyor"
+    validations: { required: true }
+
+  - type: textarea
+    id: searched
+    attributes:
+      label: "Ne aradın, ne çıktı? / What did you search, what came back?"
+      placeholder: |
+        Aranan: "ekran karardi"
+        Çıkan: DSP-001 (%31) — ilgisiz görünüyordu
+    validations: { required: true }
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: "Ne sıklıkla oluyor? / How often?"
+      options:
+        - "Haftada birkaç kez / A few times a week"
+        - "Ayda birkaç kez / A few times a month"
+        - "Nadiren ama çözümü zor / Rare but hard to solve"
+        - "Bir kez oldu / Happened once"
+    validations: { required: true }
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: "Hangi katman uygun? / Which tier fits?"
+      description: "Emin değilsen boş bırak — dallanma yoksa genelde guide doğrudur."
+      options:
+        - "runbook — birden çok kök neden var, sorularla eleniyor"
+        - "guide — sırayla denenecek 3-8 adım, dallanma yok"
+        - "reference — hata kodu, tek kart yeter"
+        - "Bilmiyorum / Not sure"
+
+  - type: textarea
+    id: known
+    attributes:
+      label: "Biliyorsan çözüm / The fix, if you know it"
+      description: "Yarım bilgi de değerli. Tam runbook yazmana gerek yok."
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Kontrol
+      options:
+        - label: "Bu isteğe parola, anahtar veya iç sunucu adı yazmadım."
+          required: true
